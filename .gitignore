@@ -1,0 +1,25 @@
+# Claude
+.claude/
+
+# Environment
+.env
+.env.local
+
+# Build
+bin/
+obj/
+*.user
+*.suo
+
+# IDE
+.vs/
+.idea/
+*.DotSettings.user
+
+# Test results
+TestResults/
+coverage/
+
+# NuGet
+*.nupkg
+output/
