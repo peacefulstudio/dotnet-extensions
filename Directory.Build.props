@@ -14,8 +14,16 @@
     <Authors>Peaceful Studio</Authors>
     <Company>Peaceful Studio OÜ</Company>
     <Copyright>Copyright (c) 2026 Peaceful Studio OÜ. All rights reserved.</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/peacefulstudio/dotnet-extensions</PackageProjectUrl>
     <RepositoryUrl>https://github.com/peacefulstudio/dotnet-extensions</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+
+    <PackageOutputPath>$(MSBuildThisFileDirectory)output/nuget</PackageOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

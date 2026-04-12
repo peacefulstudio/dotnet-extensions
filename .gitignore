@@ -16,6 +16,9 @@ obj/
 .idea/
 *.DotSettings.user
 
+# OS
+**/.DS_Store
+
 # Test results
 TestResults/
 coverage/

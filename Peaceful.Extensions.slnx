@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Peaceful.Extensions.Hosting/Peaceful.Extensions.Hosting.csproj" />
+    <Project Path="src/Peaceful.Extensions.Logging/Peaceful.Extensions.Logging.csproj" />
+    <Project Path="src/Peaceful.Extensions.Telemetry/Peaceful.Extensions.Telemetry.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Peaceful.Extensions.Hosting.Tests/Peaceful.Extensions.Hosting.Tests.csproj" />
+    <Project Path="tests/Peaceful.Extensions.Logging.Tests/Peaceful.Extensions.Logging.Tests.csproj" />
+    <Project Path="tests/Peaceful.Extensions.Telemetry.Tests/Peaceful.Extensions.Telemetry.Tests.csproj" />
+  </Folder>
+</Solution>
