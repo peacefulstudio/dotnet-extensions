@@ -8,9 +8,20 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-23
+
+Dependency-bump release. No source changes.
+
+### Changed
+- `Asp.Versioning.Http` 8.1.1 → 10.0.0 (#22)
+- `Asp.Versioning.Mvc.ApiExplorer` 8.1.1 → 10.0.0 (#23)
+- `Microsoft.AspNetCore.Mvc.Testing` 10.0.6 → 10.0.7 (#24)
+- `Microsoft.AspNetCore.OpenApi` 10.0.6 → 10.0.7 (#25)
+- `Microsoft.NET.Test.Sdk` 18.4.0 → 18.5.0 (#26)
+
 ## [0.1.0] - 2026-04-23
 
-First public release. Three packages — `Peaceful.Extensions.Hosting`,
+First tagged release. Three packages — `Peaceful.Extensions.Hosting`,
 `Peaceful.Extensions.Logging`, and `Peaceful.Extensions.Telemetry` — set up
 host bootstrap, Serilog, and OpenTelemetry for Peaceful Studio .NET services
 in a single opinionated wiring.
@@ -74,5 +85,6 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/peacefulstudio/dotnet-extensions/releases/tag/v0.1.0
