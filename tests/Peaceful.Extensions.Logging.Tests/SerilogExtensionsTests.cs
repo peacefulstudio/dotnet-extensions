@@ -5,6 +5,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -26,6 +27,117 @@ public class SerilogExtensionsTests
 
             await using var app = builder.Build();
             Log.Logger.Should().NotBeNull();
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
+    public async Task add_peaceful_serilog_wires_otlp_sink_when_endpoint_is_valid()
+    {
+        // Acceptance criterion: with the OpenTelemetry:Endpoint key
+        // configured, AddPeacefulSerilog wires the OTLP sink. We assert via the SelfLog
+        // breadcrumb the extension emits when wiring succeeds — this catches
+        // a regression that silently deletes the OTLP block (the previous
+        // assertion of `Log.Logger != null` would have passed even then).
+        var previousLogger = Log.Logger;
+        var selfLogOutput = new System.Text.StringBuilder();
+        Serilog.Debugging.SelfLog.Enable(line =>
+        {
+            lock (selfLogOutput) selfLogOutput.AppendLine(line);
+        });
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://localhost:4317",
+            });
+
+            builder.AddPeacefulSerilog();
+
+            await using var app = builder.Build();
+            // Force the Serilog configure callback to run by resolving any
+            // logger from DI — UseSerilog wires lazily on first resolution.
+            _ = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SerilogExtensionsTests>>();
+
+            string captured;
+            lock (selfLogOutput) captured = selfLogOutput.ToString();
+            captured.Should().Contain("OTLP logs sink wired");
+            captured.Should().Contain("http://localhost:4317");
+        }
+        finally
+        {
+            Serilog.Debugging.SelfLog.Disable();
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
+    public async Task add_peaceful_serilog_skips_otlp_sink_when_endpoint_blank()
+    {
+        // Acceptance criterion: a blank endpoint must skip OTLP wiring (no
+        // noisy background export attempts against a default localhost
+        // target). We assert both that the skip breadcrumb fires AND that
+        // the wire breadcrumb does not — matching what an operator debugging
+        // "why are my logs not in Loki?" would see in SelfLog.
+        var previousLogger = Log.Logger;
+        var selfLogOutput = new System.Text.StringBuilder();
+        Serilog.Debugging.SelfLog.Enable(line =>
+        {
+            lock (selfLogOutput) selfLogOutput.AppendLine(line);
+        });
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "  ",
+            });
+
+            builder.AddPeacefulSerilog();
+
+            await using var app = builder.Build();
+            _ = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SerilogExtensionsTests>>();
+
+            string captured;
+            lock (selfLogOutput) captured = selfLogOutput.ToString();
+            captured.Should().Contain("OTLP logs sink skipped");
+            captured.Should().NotContain("OTLP logs sink wired");
+        }
+        finally
+        {
+            Serilog.Debugging.SelfLog.Disable();
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
+    public void add_peaceful_serilog_throws_when_endpoint_is_malformed_uri()
+    {
+        // Symmetric with Peaceful.Extensions.Telemetry.OpenTelemetryExtensions:
+        // a non-blank but invalid endpoint must fail loudly at startup rather
+        // than be passed to the OTLP sink to fail asynchronously inside its
+        // background batcher (where the operator would never see it). The
+        // Serilog configure callback runs during host build, so the throw
+        // surfaces at WebApplicationBuilder.Build().
+        var previousLogger = Log.Logger;
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "not a uri",
+            });
+
+            builder.AddPeacefulSerilog();
+
+            var act = () => builder.Build();
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*OpenTelemetry OTLP endpoint*");
         }
         finally
         {

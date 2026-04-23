@@ -2,15 +2,25 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Peaceful.Extensions.Telemetry;
 using Serilog;
 using Serilog.Events;
+using Serilog.Formatting.Compact;
 
 namespace Peaceful.Extensions.Logging;
 
 public static class SerilogExtensions
 {
-    private const string ConsoleTemplate =
-        "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}";
+    /// <summary>
+    /// Configuration key read for the OTLP endpoint used by the Serilog
+    /// OpenTelemetry logs sink. Re-exported from
+    /// <see cref="OpenTelemetryExtensions.OpenTelemetryEndpointConfigKey"/>
+    /// so the same nameof-derived value drives traces, metrics, and logs
+    /// from a single source.
+    /// </summary>
+    public const string OpenTelemetryEndpointConfigKey =
+        OpenTelemetryExtensions.OpenTelemetryEndpointConfigKey;
 
     /// <summary>
     /// Default probe path prefixes downgraded to <see cref="LogEventLevel.Verbose"/>
@@ -21,23 +31,90 @@ public static class SerilogExtensions
     public static readonly IReadOnlyList<string> DefaultQuietProbePathPrefixes =
         Array.AsReadOnly(new[] { "/health/live", "/health/ready" });
 
+    /// <summary>
+    /// Creates a Serilog bootstrap logger that writes compact JSON
+    /// (<see cref="RenderedCompactJsonFormatter"/>) to stdout. Used before the
+    /// host is built so any output produced during startup is in a format
+    /// Loki/Alloy can parse.
+    /// </summary>
+    /// <remarks>
+    /// Callers are responsible for wrapping host construction in
+    /// <c>try</c>/<c>catch</c> and calling <see cref="Log.CloseAndFlush"/> in
+    /// <c>finally</c> to actually emit a captured startup failure — this
+    /// method only configures the logger, it does not install any exception
+    /// handlers.
+    /// </remarks>
     public static void CreateBootstrapLogger()
     {
         Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console(outputTemplate: ConsoleTemplate, formatProvider: null)
+            .WriteTo.Console(new RenderedCompactJsonFormatter())
             .CreateBootstrapLogger();
     }
 
+    /// <summary>
+    /// Wires Serilog into the host with JSON-by-default console output (in
+    /// addition to any sinks declared in <c>Serilog:</c> configuration),
+    /// <see cref="TraceContextEnricher"/> for trace/span correlation, and —
+    /// when <see cref="OpenTelemetryEndpointConfigKey"/> is configured — an
+    /// OTLP gRPC logs sink pointing at the same endpoint used for traces and
+    /// metrics.
+    /// </summary>
+    /// <remarks>
+    /// A blank or unset endpoint silently skips OTLP wiring rather than
+    /// defaulting to a localhost target — diagnostics about whether the sink
+    /// was wired or skipped are emitted via <see cref="Serilog.Debugging.SelfLog"/>,
+    /// which consumers can route to stderr in production with
+    /// <c>SelfLog.Enable(Console.Error)</c>. Note that the underlying
+    /// <c>Serilog.Sinks.OpenTelemetry</c> sink buffers events and may drop
+    /// older entries silently when the collector is unreachable; surfacing
+    /// those drops also requires <c>SelfLog</c>.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the configured endpoint is non-blank but not a valid
+    /// absolute URI — symmetric with the validation performed by
+    /// <c>Peaceful.Extensions.Telemetry.OpenTelemetryExtensions</c>.
+    /// </exception>
     public static WebApplicationBuilder AddPeacefulSerilog(this WebApplicationBuilder builder)
     {
-        builder.Host.UseSerilog((context, services, configuration) => configuration
-            .ReadFrom.Configuration(context.Configuration)
-            .ReadFrom.Services(services)
-            .Enrich.FromLogContext()
-            .Enrich.WithEnvironmentName()
-            .Enrich.WithMachineName()
-            .Enrich.WithThreadId()
-            .WriteTo.Console(outputTemplate: ConsoleTemplate, formatProvider: null));
+        builder.Host.UseSerilog((context, services, configuration) =>
+        {
+            configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Services(services)
+                .Enrich.FromLogContext()
+                .Enrich.WithEnvironmentName()
+                .Enrich.WithMachineName()
+                .Enrich.WithThreadId()
+                .Enrich.With<TraceContextEnricher>()
+                .WriteTo.Console(new RenderedCompactJsonFormatter());
+
+            var otlpEndpoint = context.Configuration[OpenTelemetryEndpointConfigKey];
+            if (string.IsNullOrWhiteSpace(otlpEndpoint))
+            {
+                Serilog.Debugging.SelfLog.WriteLine(
+                    "Peaceful.Extensions.Logging: OTLP logs sink skipped " +
+                    "('{0}' is not configured). Logs will only be written to stdout.",
+                    OpenTelemetryEndpointConfigKey);
+                return;
+            }
+
+            if (!Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
+            {
+                throw new InvalidOperationException(
+                    $"Invalid OpenTelemetry OTLP endpoint URI: '{otlpEndpoint}'. " +
+                    $"Set '{OpenTelemetryEndpointConfigKey}' to a valid absolute URI " +
+                    "(e.g., 'http://otel-collector:4317').");
+            }
+
+            configuration.WriteTo.OpenTelemetry(otlp =>
+            {
+                otlp.Endpoint = otlpUri.ToString();
+                otlp.Protocol = Serilog.Sinks.OpenTelemetry.OtlpProtocol.Grpc;
+            });
+            Serilog.Debugging.SelfLog.WriteLine(
+                "Peaceful.Extensions.Logging: OTLP logs sink wired to {0}.",
+                otlpUri);
+        });
 
         return builder;
     }
