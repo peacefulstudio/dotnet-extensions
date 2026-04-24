@@ -8,6 +8,19 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-24
+
+Dependency-bump release. No source changes.
+
+### Changed
+- `Scalar.AspNetCore` 2.13.22 → 2.14.4
+- `OpenTelemetry.Extensions.Hosting` 1.15.2 → 1.15.3
+- `OpenTelemetry.Instrumentation.AspNetCore` 1.15.1 → 1.15.2
+- `OpenTelemetry.Instrumentation.Http` 1.15.0 → 1.15.1
+- `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.2 → 1.15.3
+- `OpenTelemetry.Exporter.Console` 1.15.2 → 1.15.3
+- `Microsoft.SourceLink.GitHub` 10.0.202 → 10.0.203
+
 ## [0.1.1] - 2026-04-23
 
 Dependency-bump release. No source changes.
@@ -85,6 +98,7 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/peacefulstudio/dotnet-extensions/releases/tag/v0.1.0
