@@ -8,9 +8,11 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-04
+
 ### Changed
-- **Breaking** — `Peaceful.Extensions.Telemetry`: `AddPeacefulTelemetry` no
-  longer registers the OpenTelemetry console exporter as a Development-only
+- `Peaceful.Extensions.Telemetry`: `AddPeacefulTelemetry` no longer
+  registers the OpenTelemetry console exporter as a Development-only
   fallback when `OpenTelemetry:Endpoint` is unset. Console exporter output is
   not a log stream — flattened histogram-bucket dumps and span-attribute lines
   drown real application logs and lose all the structure their proper viewers
@@ -45,6 +47,11 @@ Pre-1.0 minor bumps may include breaking changes.
   package reference. The exporter was only used by the removed Development
   fallback, so the dependency is now dead weight — its absence is what
   prevents the silent-fallback regression from coming back.
+
+### Dependencies
+- `Scalar.AspNetCore` 2.14.4 → 2.14.9 (#40, #41, #43, #44)
+- `Microsoft.NET.Test.Sdk` 18.5.0 → 18.5.1 (#42)
+- `dependabot/fetch-metadata` (github-actions) bumped (#39)
 
 ## [0.1.2] - 2026-04-24
 
@@ -136,7 +143,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/peacefulstudio/dotnet-extensions/releases/tag/v0.1.0
