@@ -8,6 +8,31 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+- **Breaking** — `Peaceful.Extensions.Telemetry`: `AddPeacefulTelemetry` no
+  longer registers the OpenTelemetry console exporter as a Development-only
+  fallback when `OpenTelemetry:Endpoint` is unset. Console exporter output is
+  not a log stream — flattened histogram-bucket dumps and span-attribute lines
+  drown real application logs and lose all the structure their proper viewers
+  rely on. Operators who want a local view should run an OTLP target (Aspire
+  dashboard, Jaeger all-in-one, or `otel-collector` with the debug exporter)
+  and point `OpenTelemetry:Endpoint` at it.
+
+### Added
+- `Peaceful.Extensions.Telemetry`: when `OpenTelemetry:Endpoint` is unset,
+  `AddPeacefulTelemetry` now registers a hosted service that emits a single
+  structured `Warning` at startup so a misconfigured pipeline stops looking
+  identical to a healthy one. The warning fires in every environment.
+- `Peaceful.Extensions.Telemetry.OpenTelemetryExtensions.MissingEndpointWarningEventName`
+  public constant — the stable `EventId.Name` of the missing-endpoint warning,
+  filterable in log pipelines (`"OpenTelemetryEndpointMissing"`).
+
+### Removed
+- `Peaceful.Extensions.Telemetry`: dropped the `OpenTelemetry.Exporter.Console`
+  package reference. The exporter was only used by the removed Development
+  fallback, so the dependency is now dead weight — its absence is what
+  prevents the silent-fallback regression from coming back.
+
 ## [0.1.2] - 2026-04-24
 
 Dependency-bump release. No source changes.

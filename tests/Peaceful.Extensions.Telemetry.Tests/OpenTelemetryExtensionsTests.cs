@@ -1,10 +1,13 @@
 // Copyright (c) 2026 Peaceful Studio OÜ. All rights reserved.
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 
@@ -262,4 +265,143 @@ public class OpenTelemetryExtensionsTests
         OpenTelemetryExtensions.OpenTelemetryEndpointConfigKey
             .Should().Be("OpenTelemetry:Endpoint");
     }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Staging")]
+    [InlineData("Production")]
+    public async Task add_peaceful_telemetry_without_endpoint_logs_warning_in_every_environment(string environment)
+    {
+        var capture = new CapturingLoggerProvider();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(capture);
+        builder.Logging.SetMinimumLevel(LogLevel.Trace);
+
+        builder.AddPeacefulTelemetry(options => options.ServiceName = "no-endpoint-service");
+
+        using var app = builder.Build();
+        await app.StartAsync();
+        await app.StopAsync();
+
+        capture.MissingEndpointWarnings().Should().HaveCount(1,
+            "operators need exactly one structured warning when no OTLP endpoint is configured.");
+    }
+
+    [Fact]
+    public async Task add_peaceful_telemetry_with_endpoint_does_not_log_missing_endpoint_warning()
+    {
+        var capture = new CapturingLoggerProvider();
+        var builder = WebApplication.CreateBuilder();
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(capture);
+        builder.Logging.SetMinimumLevel(LogLevel.Trace);
+
+        builder.AddPeacefulTelemetry(options =>
+        {
+            options.ServiceName = "endpoint-configured-service";
+            options.Endpoint = "http://collector:4317";
+        });
+
+        using var app = builder.Build();
+        await app.StartAsync();
+        await app.StopAsync();
+
+        capture.MissingEndpointWarnings().Should().BeEmpty(
+            "the missing-endpoint warning must not fire when an endpoint is configured.");
+    }
+
+    [Fact]
+    public async Task add_peaceful_telemetry_called_first_without_then_with_endpoint_does_not_warn()
+    {
+        var capture = new CapturingLoggerProvider();
+        var builder = WebApplication.CreateBuilder();
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(capture);
+        builder.Logging.SetMinimumLevel(LogLevel.Trace);
+
+        builder.AddPeacefulTelemetry(options => options.ServiceName = "ordered-call-service");
+        builder.AddPeacefulTelemetry(options =>
+        {
+            options.ServiceName = "ordered-call-service";
+            options.Endpoint = "http://collector:4317";
+        });
+
+        using var app = builder.Build();
+        await app.StartAsync();
+        await app.StopAsync();
+
+        capture.MissingEndpointWarnings().Should().BeEmpty(
+            "a later call resolving the endpoint must unregister the prior MissingEndpointWarning so it can't warn falsely.");
+    }
+
+    [Fact]
+    public async Task add_peaceful_telemetry_called_twice_without_endpoint_logs_warning_exactly_once()
+    {
+        var capture = new CapturingLoggerProvider();
+        var builder = WebApplication.CreateBuilder();
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(capture);
+        builder.Logging.SetMinimumLevel(LogLevel.Trace);
+
+        builder.AddPeacefulTelemetry(options => options.ServiceName = "double-call-service");
+        builder.AddPeacefulTelemetry(options => options.ServiceName = "double-call-service");
+
+        using var app = builder.Build();
+        await app.StartAsync();
+        await app.StopAsync();
+
+        capture.MissingEndpointWarnings().Should().HaveCount(1,
+            "duplicate AddPeacefulTelemetry calls must not multiply the warning.");
+    }
+
+    [Fact]
+    public void add_peaceful_telemetry_does_not_load_console_exporter_assembly()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.AddPeacefulTelemetry(options => options.ServiceName = "no-console-exporter-service");
+        using var app = builder.Build();
+        _ = app.Services.GetService<TracerProvider>();
+        _ = app.Services.GetService<MeterProvider>();
+
+        AppDomain.CurrentDomain.GetAssemblies()
+            .Select(a => a.GetName().Name)
+            .Should().NotContain("OpenTelemetry.Exporter.Console",
+                "the Development console-exporter fallback was deliberately removed (issue #45) — the package is no longer referenced.");
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<CapturedEntry> entries = new();
+
+        public IEnumerable<CapturedEntry> MissingEndpointWarnings() =>
+            entries.Where(e =>
+                e.Level == LogLevel.Warning
+                && e.EventName == OpenTelemetryExtensions.MissingEndpointWarningEventName);
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class CapturingLogger(ConcurrentQueue<CapturedEntry> entries) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                entries.Enqueue(new CapturedEntry(logLevel, eventId.Name, formatter(state, exception)));
+            }
+        }
+    }
+
+    private sealed record CapturedEntry(LogLevel Level, string? EventName, string Message);
 }

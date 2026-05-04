@@ -2,14 +2,16 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace Peaceful.Extensions.Telemetry;
 
-public static class OpenTelemetryExtensions
+public static partial class OpenTelemetryExtensions
 {
     /// <summary>
     /// Configuration key read for the OTLP endpoint URI. Composed at compile
@@ -19,6 +21,13 @@ public static class OpenTelemetryExtensions
     /// </summary>
     public const string OpenTelemetryEndpointConfigKey =
         $"{OpenTelemetryOptions.SectionName}:{nameof(OpenTelemetryOptions.Endpoint)}";
+
+    /// <summary>
+    /// <see cref="EventId.Name"/> of the log entry emitted at startup when no
+    /// OTLP endpoint is configured. Stable across releases — operators can
+    /// filter on this name in their log pipeline.
+    /// </summary>
+    public const string MissingEndpointWarningEventName = "OpenTelemetryEndpointMissing";
 
     public static WebApplicationBuilder AddPeacefulTelemetry(
         this WebApplicationBuilder builder,
@@ -81,8 +90,6 @@ public static class OpenTelemetryExtensions
 
                 if (otlpUri is not null)
                     tracing.AddOtlpExporter(o => o.Endpoint = otlpUri);
-                else if (builder.Environment.IsDevelopment())
-                    tracing.AddConsoleExporter();
             })
             .WithMetrics(metrics =>
             {
@@ -93,10 +100,53 @@ public static class OpenTelemetryExtensions
 
                 if (otlpUri is not null)
                     metrics.AddOtlpExporter(o => o.Endpoint = otlpUri);
-                else if (builder.Environment.IsDevelopment())
-                    metrics.AddConsoleExporter();
             });
 
+        if (otlpUri is null)
+        {
+            builder.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<IHostedService, MissingEndpointWarning>());
+        }
+        else
+        {
+            UnregisterMissingEndpointWarning(builder.Services);
+        }
+
         return builder;
+    }
+
+    static void UnregisterMissingEndpointWarning(IServiceCollection services)
+    {
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            var descriptor = services[i];
+            if (descriptor.ServiceType == typeof(IHostedService) &&
+                descriptor.ImplementationType == typeof(MissingEndpointWarning))
+            {
+                services.RemoveAt(i);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Hosted service that logs a startup warning when no OTLP endpoint is configured.
+    /// </summary>
+    internal sealed partial class MissingEndpointWarning(ILogger<MissingEndpointWarning> logger) : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            LogMissingEndpoint(logger, OpenTelemetryEndpointConfigKey);
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        [LoggerMessage(
+            EventName = MissingEndpointWarningEventName,
+            Level = LogLevel.Warning,
+            Message = "OpenTelemetry endpoint is not configured ('{ConfigKey}'). " +
+                      "Traces and metrics will not be exported. " +
+                      "Set the endpoint to an OTLP collector URI (e.g. 'http://otel-collector:4317') to enable telemetry export.")]
+        static partial void LogMissingEndpoint(ILogger logger, string configKey);
     }
 }
