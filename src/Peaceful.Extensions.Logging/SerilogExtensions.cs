@@ -3,6 +3,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Peaceful.Extensions.Telemetry;
 using Serilog;
 using Serilog.Events;
@@ -10,7 +14,7 @@ using Serilog.Formatting.Compact;
 
 namespace Peaceful.Extensions.Logging;
 
-public static class SerilogExtensions
+public static partial class SerilogExtensions
 {
     /// <summary>
     /// Configuration key read for the OTLP endpoint used by the Serilog
@@ -21,6 +25,16 @@ public static class SerilogExtensions
     /// </summary>
     public const string OpenTelemetryEndpointConfigKey =
         OpenTelemetryExtensions.OpenTelemetryEndpointConfigKey;
+
+    /// <summary>
+    /// <see cref="EventId.Name"/> of the log entry emitted at startup when no
+    /// OTLP endpoint is configured. Stable across releases — operators can
+    /// filter on this name in their log pipeline. Symmetric with
+    /// <see cref="OpenTelemetryExtensions.MissingEndpointWarningEventName"/>
+    /// from the Telemetry package, but distinct so the two signals can be
+    /// triaged independently when only one of telemetry/logs is wired.
+    /// </summary>
+    public const string MissingEndpointWarningEventName = "OpenTelemetryLogsEndpointMissing";
 
     /// <summary>
     /// Default probe path prefixes downgraded to <see cref="LogEventLevel.Verbose"/>
@@ -60,17 +74,27 @@ public static class SerilogExtensions
     /// metrics.
     /// </summary>
     /// <remarks>
-    /// A blank or unset endpoint silently skips OTLP wiring rather than
-    /// defaulting to a localhost target — diagnostics about whether the sink
-    /// was wired or skipped are emitted via <see cref="Serilog.Debugging.SelfLog"/>,
-    /// which consumers can route to stderr in production with
-    /// <c>SelfLog.Enable(Console.Error)</c>. Note that the underlying
-    /// <c>Serilog.Sinks.OpenTelemetry</c> sink buffers events and may drop
-    /// older entries silently when the collector is unreachable; surfacing
-    /// those drops also requires <c>SelfLog</c>.
+    /// A blank or unset endpoint skips OTLP wiring rather than defaulting to
+    /// a localhost target, and registers a hosted service that emits a single
+    /// structured <see cref="LogLevel.Warning"/> at startup (event name
+    /// <see cref="MissingEndpointWarningEventName"/>) through the configured
+    /// application logger so an operator debugging "why aren't my logs
+    /// reaching Loki?" sees a real, level-tagged signal rather than a silent
+    /// skip. The hosted-service path means the warning rides every sink wired
+    /// by <c>Serilog:</c> configuration / DI — visibility no longer depends on
+    /// the static <c>Log.Logger</c> having been seeded by
+    /// <see cref="CreateBootstrapLogger"/>. The warning fires in every
+    /// environment because the failure mode is the same in every environment.
+    /// Successful wiring continues to emit a <see cref="Serilog.Debugging.SelfLog"/>
+    /// breadcrumb for operators who explicitly opt into Serilog plumbing
+    /// diagnostics with <c>SelfLog.Enable(Console.Error)</c>; the underlying
+    /// <c>Serilog.Sinks.OpenTelemetry</c> sink also buffers events and may drop
+    /// older entries silently when the collector is unreachable, which
+    /// likewise surfaces only via <c>SelfLog</c>.
     /// </remarks>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when the configured endpoint is non-blank but not a valid
+    /// Thrown at host build time (from the <c>UseSerilog</c> configure
+    /// callback) when the configured endpoint is non-blank but not a valid
     /// absolute URI — symmetric with the validation performed by
     /// <c>Peaceful.Extensions.Telemetry.OpenTelemetryExtensions</c>.
     /// </exception>
@@ -90,13 +114,7 @@ public static class SerilogExtensions
 
             var otlpEndpoint = context.Configuration[OpenTelemetryEndpointConfigKey];
             if (string.IsNullOrWhiteSpace(otlpEndpoint))
-            {
-                Serilog.Debugging.SelfLog.WriteLine(
-                    "Peaceful.Extensions.Logging: OTLP logs sink skipped " +
-                    "('{0}' is not configured). Logs will only be written to stdout.",
-                    OpenTelemetryEndpointConfigKey);
                 return;
-            }
 
             if (!Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var otlpUri))
             {
@@ -116,7 +134,67 @@ public static class SerilogExtensions
                 otlpUri);
         });
 
+        var configuredEndpoint = builder.Configuration[OpenTelemetryEndpointConfigKey];
+        if (string.IsNullOrWhiteSpace(configuredEndpoint))
+        {
+            builder.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<IHostedService, MissingEndpointWarning>());
+        }
+        else
+        {
+            UnregisterMissingEndpointWarning(builder.Services);
+        }
+
         return builder;
+    }
+
+    static void UnregisterMissingEndpointWarning(IServiceCollection services)
+    {
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            var descriptor = services[i];
+            if (descriptor.ServiceType == typeof(IHostedService) &&
+                descriptor.ImplementationType == typeof(MissingEndpointWarning))
+            {
+                services.RemoveAt(i);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Hosted service that logs a startup warning when no OTLP endpoint is
+    /// configured. Uses <see cref="ILogger{TCategoryName}"/> from DI rather
+    /// than <see cref="Log"/> so the warning rides the configured Serilog
+    /// pipeline and is visible without a prior call to
+    /// <see cref="CreateBootstrapLogger"/>. Re-reads
+    /// <see cref="IConfiguration"/> at <see cref="StartAsync"/> rather than
+    /// trusting the registration-time decision so the warning stays in
+    /// lock-step with the actual sink-wiring decision made by
+    /// <c>UseSerilog</c> at host-build time — registration runs against the
+    /// extension-call-time configuration snapshot, but extra configuration
+    /// sources can land between then and <c>Build()</c>, and a false warning
+    /// while OTLP is in fact wired would be the worst kind of alert noise.
+    /// </summary>
+    internal sealed partial class MissingEndpointWarning(
+        IConfiguration configuration,
+        ILogger<MissingEndpointWarning> logger) : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(configuration[OpenTelemetryEndpointConfigKey]))
+                LogMissingEndpoint(logger, OpenTelemetryEndpointConfigKey);
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        [LoggerMessage(
+            EventName = MissingEndpointWarningEventName,
+            Level = LogLevel.Warning,
+            Message = "OpenTelemetry endpoint is not configured ('{ConfigKey}'). " +
+                      "OTLP logs sink is not wired — application logs are not exported via OTLP. " +
+                      "Set the endpoint to an OTLP collector URI (e.g. 'http://otel-collector:4317') to enable log export.")]
+        static partial void LogMissingEndpoint(Microsoft.Extensions.Logging.ILogger logger, string configKey);
     }
 
     /// <summary>

@@ -17,6 +17,15 @@ Pre-1.0 minor bumps may include breaking changes.
   rely on. Operators who want a local view should run an OTLP target (Aspire
   dashboard, Jaeger all-in-one, or `otel-collector` with the debug exporter)
   and point `OpenTelemetry:Endpoint` at it.
+- `Peaceful.Extensions.Logging`: when `OpenTelemetry:Endpoint` is unset,
+  `AddPeacefulSerilog` now registers a hosted service that emits a single
+  structured `Warning` at startup naming the missing config key, replacing
+  the previous `Serilog.Debugging.SelfLog.WriteLine` skip breadcrumb (which
+  was silent unless an operator opted in with `SelfLog.Enable`). The warning
+  fires in every environment through the configured application logger, so
+  visibility no longer depends on `CreateBootstrapLogger` having been called
+  first. The "OTLP logs sink wired" SelfLog breadcrumb is unchanged on the
+  success path.
 
 ### Added
 - `Peaceful.Extensions.Telemetry`: when `OpenTelemetry:Endpoint` is unset,
@@ -26,6 +35,10 @@ Pre-1.0 minor bumps may include breaking changes.
 - `Peaceful.Extensions.Telemetry.OpenTelemetryExtensions.MissingEndpointWarningEventName`
   public constant — the stable `EventId.Name` of the missing-endpoint warning,
   filterable in log pipelines (`"OpenTelemetryEndpointMissing"`).
+- `Peaceful.Extensions.Logging.SerilogExtensions.MissingEndpointWarningEventName`
+  public constant — the stable `EventId.Name` of the logs-side missing-endpoint
+  warning (`"OpenTelemetryLogsEndpointMissing"`), distinct from the telemetry
+  one so the two signals can be triaged independently.
 
 ### Removed
 - `Peaceful.Extensions.Telemetry`: dropped the `OpenTelemetry.Exporter.Console`
