@@ -37,11 +37,6 @@ public class SerilogExtensionsTests
     [Fact]
     public async Task add_peaceful_serilog_wires_otlp_sink_when_endpoint_is_valid()
     {
-        // Acceptance criterion: with the OpenTelemetry:Endpoint key
-        // configured, AddPeacefulSerilog wires the OTLP sink. We assert via the SelfLog
-        // breadcrumb the extension emits when wiring succeeds — this catches
-        // a regression that silently deletes the OTLP block (the previous
-        // assertion of `Log.Logger != null` would have passed even then).
         var previousLogger = Log.Logger;
         var selfLogOutput = new System.Text.StringBuilder();
         Serilog.Debugging.SelfLog.Enable(line =>
@@ -76,13 +71,8 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_serilog_skips_otlp_sink_when_endpoint_blank()
+    public async Task add_peaceful_serilog_does_not_wire_otlp_sink_when_endpoint_is_blank()
     {
-        // Acceptance criterion: a blank endpoint must skip OTLP wiring (no
-        // noisy background export attempts against a default localhost
-        // target). We assert both that the skip breadcrumb fires AND that
-        // the wire breadcrumb does not — matching what an operator debugging
-        // "why are my logs not in Loki?" would see in SelfLog.
         var previousLogger = Log.Logger;
         var selfLogOutput = new System.Text.StringBuilder();
         Serilog.Debugging.SelfLog.Enable(line =>
@@ -104,14 +94,215 @@ public class SerilogExtensionsTests
 
             string captured;
             lock (selfLogOutput) captured = selfLogOutput.ToString();
-            captured.Should().Contain("OTLP logs sink skipped");
-            captured.Should().NotContain("OTLP logs sink wired");
+            captured.Should().NotContain("OTLP logs sink wired",
+                "the success-path breadcrumb's absence pins that blank endpoint skips OTLP wiring entirely (no localhost-default regression).");
         }
         finally
         {
             Serilog.Debugging.SelfLog.Disable();
             Log.Logger = previousLogger;
         }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("\t")]
+    public async Task add_peaceful_serilog_warns_when_endpoint_is_blank(string? endpoint)
+    {
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = endpoint,
+            });
+            builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
+
+            builder.AddPeacefulSerilog();
+
+            using var app = builder.Build();
+            await app.StartAsync();
+            await app.StopAsync();
+
+            events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
+                "operators need exactly one structured warning when the OTLP logs sink is skipped.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Staging")]
+    [InlineData("Production")]
+    public async Task add_peaceful_serilog_warns_in_every_environment(string environment)
+    {
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        try
+        {
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+            builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
+
+            builder.AddPeacefulSerilog();
+
+            using var app = builder.Build();
+            await app.StartAsync();
+            await app.StopAsync();
+
+            events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
+                "the failure mode is the same in every environment — the warning must fire in all of them.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
+    public async Task add_peaceful_serilog_does_not_warn_when_endpoint_is_configured()
+    {
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://localhost:4317",
+            });
+            builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
+
+            builder.AddPeacefulSerilog();
+
+            using var app = builder.Build();
+            await app.StartAsync();
+            await app.StopAsync();
+
+            events.Where(IsMissingEndpointWarning).Should().BeEmpty(
+                "the missing-endpoint warning must not fire when an endpoint is configured — alert-fatigue regression guard.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
+    public async Task add_peaceful_serilog_then_configuration_resolves_endpoint_does_not_warn()
+    {
+        // Regression for the registration-time-vs-host-build-time asymmetry:
+        // AddPeacefulSerilog reads builder.Configuration at extension-call
+        // time to decide whether to register MissingEndpointWarning, but
+        // UseSerilog reads context.Configuration at host-build time to
+        // decide whether to wire the OTLP sink. If a later configuration
+        // source resolves the endpoint between those two moments, OTLP
+        // would be wired while MissingEndpointWarning still falsely warns —
+        // unless the hosted service re-reads IConfiguration at StartAsync.
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
+
+            builder.AddPeacefulSerilog();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://collector:4317",
+            });
+
+            using var app = builder.Build();
+            await app.StartAsync();
+            await app.StopAsync();
+
+            events.Where(IsMissingEndpointWarning).Should().BeEmpty(
+                "the warning must stay in lock-step with the host-build-time OTLP-wiring decision; a later configuration source resolving the endpoint must suppress the warning.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
+    public async Task add_peaceful_serilog_called_first_without_then_with_endpoint_does_not_warn()
+    {
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
+
+            builder.AddPeacefulSerilog();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://collector:4317",
+            });
+            builder.AddPeacefulSerilog();
+
+            using var app = builder.Build();
+            await app.StartAsync();
+            await app.StopAsync();
+
+            events.Where(IsMissingEndpointWarning).Should().BeEmpty(
+                "a later call resolving the endpoint must unregister the prior MissingEndpointWarning so it can't warn falsely.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
+    public async Task add_peaceful_serilog_called_twice_without_endpoint_logs_warning_exactly_once()
+    {
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
+
+            builder.AddPeacefulSerilog();
+            builder.AddPeacefulSerilog();
+
+            using var app = builder.Build();
+            await app.StartAsync();
+            await app.StopAsync();
+
+            events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
+                "duplicate AddPeacefulSerilog calls must not multiply the warning.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    private static bool IsMissingEndpointWarning(LogEvent e) =>
+        e.Level == LogEventLevel.Warning &&
+        e.Properties.TryGetValue("ConfigKey", out var configKey) &&
+        configKey is ScalarValue { Value: string keyValue } &&
+        keyValue == SerilogExtensions.OpenTelemetryEndpointConfigKey &&
+        HasEventName(e, SerilogExtensions.MissingEndpointWarningEventName);
+
+    private static bool HasEventName(LogEvent e, string expectedName)
+    {
+        if (!e.Properties.TryGetValue("EventId", out var idValue))
+            return false;
+        if (idValue is not StructureValue eventIdStructure)
+            return false;
+        var nameProperty = eventIdStructure.Properties.FirstOrDefault(p => p.Name == "Name");
+        return nameProperty?.Value is ScalarValue { Value: string actualName }
+            && actualName == expectedName;
     }
 
     [Fact]

@@ -8,6 +8,51 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-04
+
+### Changed
+- `Peaceful.Extensions.Telemetry`: `AddPeacefulTelemetry` no longer
+  registers the OpenTelemetry console exporter as a Development-only
+  fallback when `OpenTelemetry:Endpoint` is unset. Console exporter output is
+  not a log stream — flattened histogram-bucket dumps and span-attribute lines
+  drown real application logs and lose all the structure their proper viewers
+  rely on. Operators who want a local view should run an OTLP target (Aspire
+  dashboard, Jaeger all-in-one, or `otel-collector` with the debug exporter)
+  and point `OpenTelemetry:Endpoint` at it.
+- `Peaceful.Extensions.Logging`: when `OpenTelemetry:Endpoint` is unset,
+  `AddPeacefulSerilog` now registers a hosted service that emits a single
+  structured `Warning` at startup naming the missing config key, replacing
+  the previous `Serilog.Debugging.SelfLog.WriteLine` skip breadcrumb (which
+  was silent unless an operator opted in with `SelfLog.Enable`). The warning
+  fires in every environment through the configured application logger, so
+  visibility no longer depends on `CreateBootstrapLogger` having been called
+  first. The "OTLP logs sink wired" SelfLog breadcrumb is unchanged on the
+  success path.
+
+### Added
+- `Peaceful.Extensions.Telemetry`: when `OpenTelemetry:Endpoint` is unset,
+  `AddPeacefulTelemetry` now registers a hosted service that emits a single
+  structured `Warning` at startup so a misconfigured pipeline stops looking
+  identical to a healthy one. The warning fires in every environment.
+- `Peaceful.Extensions.Telemetry.OpenTelemetryExtensions.MissingEndpointWarningEventName`
+  public constant — the stable `EventId.Name` of the missing-endpoint warning,
+  filterable in log pipelines (`"OpenTelemetryEndpointMissing"`).
+- `Peaceful.Extensions.Logging.SerilogExtensions.MissingEndpointWarningEventName`
+  public constant — the stable `EventId.Name` of the logs-side missing-endpoint
+  warning (`"OpenTelemetryLogsEndpointMissing"`), distinct from the telemetry
+  one so the two signals can be triaged independently.
+
+### Removed
+- `Peaceful.Extensions.Telemetry`: dropped the `OpenTelemetry.Exporter.Console`
+  package reference. The exporter was only used by the removed Development
+  fallback, so the dependency is now dead weight — its absence is what
+  prevents the silent-fallback regression from coming back.
+
+### Dependencies
+- `Scalar.AspNetCore` 2.14.4 → 2.14.9 (#40, #41, #43, #44)
+- `Microsoft.NET.Test.Sdk` 18.5.0 → 18.5.1 (#42)
+- `dependabot/fetch-metadata` (github-actions) bumped (#39)
+
 ## [0.1.2] - 2026-04-24
 
 Dependency-bump release. No source changes.
@@ -98,7 +143,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/peacefulstudio/dotnet-extensions/releases/tag/v0.1.0
