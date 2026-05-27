@@ -16,7 +16,7 @@ public class ScalarExtensionsTests
         await using var app = await CreateAppAsync();
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/scalar/v1");
+        var response = await client.GetAsync("/scalar/v1", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -27,7 +27,7 @@ public class ScalarExtensionsTests
         await using var app = await CreateAppAsync();
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/openapi/v1.yaml");
+        var response = await client.GetAsync("/openapi/v1.yaml", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }

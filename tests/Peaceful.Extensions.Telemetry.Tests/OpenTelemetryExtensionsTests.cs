@@ -281,8 +281,8 @@ public class OpenTelemetryExtensionsTests
         builder.AddPeacefulTelemetry(options => options.ServiceName = "no-endpoint-service");
 
         using var app = builder.Build();
-        await app.StartAsync();
-        await app.StopAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        await app.StopAsync(TestContext.Current.CancellationToken);
 
         capture.MissingEndpointWarnings().Should().HaveCount(1,
             "operators need exactly one structured warning when no OTLP endpoint is configured.");
@@ -304,8 +304,8 @@ public class OpenTelemetryExtensionsTests
         });
 
         using var app = builder.Build();
-        await app.StartAsync();
-        await app.StopAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        await app.StopAsync(TestContext.Current.CancellationToken);
 
         capture.MissingEndpointWarnings().Should().BeEmpty(
             "the missing-endpoint warning must not fire when an endpoint is configured.");
@@ -328,8 +328,8 @@ public class OpenTelemetryExtensionsTests
         });
 
         using var app = builder.Build();
-        await app.StartAsync();
-        await app.StopAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        await app.StopAsync(TestContext.Current.CancellationToken);
 
         capture.MissingEndpointWarnings().Should().BeEmpty(
             "a later call resolving the endpoint must unregister the prior MissingEndpointWarning so it can't warn falsely.");
@@ -348,8 +348,8 @@ public class OpenTelemetryExtensionsTests
         builder.AddPeacefulTelemetry(options => options.ServiceName = "double-call-service");
 
         using var app = builder.Build();
-        await app.StartAsync();
-        await app.StopAsync();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        await app.StopAsync(TestContext.Current.CancellationToken);
 
         capture.MissingEndpointWarnings().Should().HaveCount(1,
             "duplicate AddPeacefulTelemetry calls must not multiply the warning.");

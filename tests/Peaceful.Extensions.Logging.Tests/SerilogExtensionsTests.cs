@@ -125,8 +125,8 @@ public class SerilogExtensionsTests
             builder.AddPeacefulSerilog();
 
             using var app = builder.Build();
-            await app.StartAsync();
-            await app.StopAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
                 "operators need exactly one structured warning when the OTLP logs sink is skipped.");
@@ -153,8 +153,8 @@ public class SerilogExtensionsTests
             builder.AddPeacefulSerilog();
 
             using var app = builder.Build();
-            await app.StartAsync();
-            await app.StopAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
                 "the failure mode is the same in every environment — the warning must fire in all of them.");
@@ -182,8 +182,8 @@ public class SerilogExtensionsTests
             builder.AddPeacefulSerilog();
 
             using var app = builder.Build();
-            await app.StartAsync();
-            await app.StopAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().BeEmpty(
                 "the missing-endpoint warning must not fire when an endpoint is configured — alert-fatigue regression guard.");
@@ -219,8 +219,8 @@ public class SerilogExtensionsTests
             });
 
             using var app = builder.Build();
-            await app.StartAsync();
-            await app.StopAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().BeEmpty(
                 "the warning must stay in lock-step with the host-build-time OTLP-wiring decision; a later configuration source resolving the endpoint must suppress the warning.");
@@ -249,8 +249,8 @@ public class SerilogExtensionsTests
             builder.AddPeacefulSerilog();
 
             using var app = builder.Build();
-            await app.StartAsync();
-            await app.StopAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().BeEmpty(
                 "a later call resolving the endpoint must unregister the prior MissingEndpointWarning so it can't warn falsely.");
@@ -275,8 +275,8 @@ public class SerilogExtensionsTests
             builder.AddPeacefulSerilog();
 
             using var app = builder.Build();
-            await app.StartAsync();
-            await app.StopAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
                 "duplicate AddPeacefulSerilog calls must not multiply the warning.");
@@ -366,10 +366,10 @@ public class SerilogExtensionsTests
             await using var app = builder.Build();
             app.UsePeacefulRequestLogging();
             app.MapGet("/test", () => "ok");
-            await app.StartAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
 
             var client = app.GetTestClient();
-            var response = await client.GetAsync("/test");
+            var response = await client.GetAsync("/test", TestContext.Current.CancellationToken);
             response.StatusCode.Should().Be(HttpStatusCode.OK);
         }
         finally
@@ -421,10 +421,10 @@ public class SerilogExtensionsTests
                 ctx.Response.StatusCode = statusCode;
                 return Task.CompletedTask;
             });
-            await app.StartAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
 
             var client = app.GetTestClient();
-            await client.GetAsync(path);
+            await client.GetAsync(path, TestContext.Current.CancellationToken);
 
             // Flush Serilog's async pipeline so the request-completed event
             // lands in our sink before we assert on it.
@@ -471,9 +471,9 @@ public class SerilogExtensionsTests
             await using var app = builder.Build();
             app.UsePeacefulRequestLogging(CustomProbePrefixes);
             app.Map("/custom/probe", ctx => Task.CompletedTask);
-            await app.StartAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
 
-            await app.GetTestClient().GetAsync("/custom/probe");
+            await app.GetTestClient().GetAsync("/custom/probe", TestContext.Current.CancellationToken);
             Log.CloseAndFlush();
 
             var evt = events.FirstOrDefault(e =>
@@ -510,9 +510,9 @@ public class SerilogExtensionsTests
             await using var app = builder.Build();
             app.UsePeacefulRequestLogging(Array.Empty<string>());
             app.Map("/health/live", ctx => Task.CompletedTask);
-            await app.StartAsync();
+            await app.StartAsync(TestContext.Current.CancellationToken);
 
-            await app.GetTestClient().GetAsync("/health/live");
+            await app.GetTestClient().GetAsync("/health/live", TestContext.Current.CancellationToken);
             Log.CloseAndFlush();
 
             var evt = events.FirstOrDefault(e =>
