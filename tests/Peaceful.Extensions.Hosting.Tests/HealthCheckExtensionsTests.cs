@@ -52,7 +52,7 @@ public class HealthCheckExtensionsTests
         builder.Services.AddHealthChecks();
 
         var app = builder.Build();
-        app.MapPeacefulHealthChecks();
+        app.MapDefaultHealthChecks();
         await app.StartAsync();
         return app;
     }

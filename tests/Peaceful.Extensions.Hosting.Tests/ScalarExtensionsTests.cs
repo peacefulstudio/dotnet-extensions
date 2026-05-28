@@ -36,11 +36,11 @@ public class ScalarExtensionsTests
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
-        builder.AddPeacefulOpenApi("Test API", "A test API");
+        builder.AddDefaultOpenApi("Test API", "A test API");
 
         var app = builder.Build();
         app.UseRouting();
-        app.MapPeacefulScalar("Test API");
+        app.MapScalar("Test API");
         await app.StartAsync();
         return app;
     }

@@ -16,11 +16,11 @@ namespace Peaceful.Extensions.Telemetry.Tests;
 public class OpenTelemetryExtensionsTests
 {
     [Fact]
-    public void add_peaceful_telemetry_registers_tracer_provider()
+    public void add_telemetry_registers_tracer_provider()
     {
         var builder = WebApplication.CreateBuilder();
 
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = "test-service";
             options.ServiceVersion = "1.0.0";
@@ -32,11 +32,11 @@ public class OpenTelemetryExtensionsTests
     }
 
     [Fact]
-    public void add_peaceful_telemetry_registers_meter_provider()
+    public void add_telemetry_registers_meter_provider()
     {
         var builder = WebApplication.CreateBuilder();
 
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = "test-service";
         });
@@ -47,11 +47,11 @@ public class OpenTelemetryExtensionsTests
     }
 
     [Fact]
-    public void add_peaceful_telemetry_with_grpc_does_not_throw()
+    public void add_telemetry_with_grpc_does_not_throw()
     {
         var builder = WebApplication.CreateBuilder();
 
-        var act = () => builder.AddPeacefulTelemetry(options =>
+        var act = () => builder.AddTelemetry(options =>
         {
             options.ServiceName = "test-service";
             options.EnableGrpcInstrumentation = true;
@@ -64,11 +64,11 @@ public class OpenTelemetryExtensionsTests
     [InlineData(-0.01)]
     [InlineData(1.01)]
     [InlineData(double.NaN)]
-    public void add_peaceful_telemetry_rejects_out_of_range_sampling_ratio(double ratio)
+    public void add_telemetry_rejects_out_of_range_sampling_ratio(double ratio)
     {
         var builder = WebApplication.CreateBuilder();
 
-        var act = () => builder.AddPeacefulTelemetry(options =>
+        var act = () => builder.AddTelemetry(options =>
         {
             options.ServiceName = "test-service";
             options.TraceSamplingRatio = ratio;
@@ -88,7 +88,7 @@ public class OpenTelemetryExtensionsTests
         const string serviceName = "sampling-test-service";
 
         var builder = WebApplication.CreateBuilder();
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = serviceName;
             options.TraceSamplingRatio = 0.0;
@@ -132,7 +132,7 @@ public class OpenTelemetryExtensionsTests
         const string serviceName = "always-sampling-service";
 
         var builder = WebApplication.CreateBuilder();
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = serviceName;
             options.TraceSamplingRatio = 1.0;
@@ -164,7 +164,7 @@ public class OpenTelemetryExtensionsTests
         const string serviceName = "parent-based-recorded-service";
 
         var builder = WebApplication.CreateBuilder();
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = serviceName;
             options.TraceSamplingRatio = 0.0;
@@ -203,7 +203,7 @@ public class OpenTelemetryExtensionsTests
         const string serviceName = "parent-based-unsampled-service";
 
         var builder = WebApplication.CreateBuilder();
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = serviceName;
             options.TraceSamplingRatio = 0.0;
@@ -270,7 +270,7 @@ public class OpenTelemetryExtensionsTests
     [InlineData("Development")]
     [InlineData("Staging")]
     [InlineData("Production")]
-    public async Task add_peaceful_telemetry_without_endpoint_logs_warning_in_every_environment(string environment)
+    public async Task add_telemetry_without_endpoint_logs_warning_in_every_environment(string environment)
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
@@ -278,7 +278,7 @@ public class OpenTelemetryExtensionsTests
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
 
-        builder.AddPeacefulTelemetry(options => options.ServiceName = "no-endpoint-service");
+        builder.AddTelemetry(options => options.ServiceName = "no-endpoint-service");
 
         using var app = builder.Build();
         await app.StartAsync(TestContext.Current.CancellationToken);
@@ -289,7 +289,7 @@ public class OpenTelemetryExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_telemetry_with_endpoint_does_not_log_missing_endpoint_warning()
+    public async Task add_telemetry_with_endpoint_does_not_log_missing_endpoint_warning()
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder();
@@ -297,7 +297,7 @@ public class OpenTelemetryExtensionsTests
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
 
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = "endpoint-configured-service";
             options.Endpoint = "http://collector:4317";
@@ -312,7 +312,7 @@ public class OpenTelemetryExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_telemetry_called_first_without_then_with_endpoint_does_not_warn()
+    public async Task add_telemetry_called_first_without_then_with_endpoint_does_not_warn()
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder();
@@ -320,8 +320,8 @@ public class OpenTelemetryExtensionsTests
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
 
-        builder.AddPeacefulTelemetry(options => options.ServiceName = "ordered-call-service");
-        builder.AddPeacefulTelemetry(options =>
+        builder.AddTelemetry(options => options.ServiceName = "ordered-call-service");
+        builder.AddTelemetry(options =>
         {
             options.ServiceName = "ordered-call-service";
             options.Endpoint = "http://collector:4317";
@@ -336,7 +336,7 @@ public class OpenTelemetryExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_telemetry_called_twice_without_endpoint_logs_warning_exactly_once()
+    public async Task add_telemetry_called_twice_without_endpoint_logs_warning_exactly_once()
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder();
@@ -344,22 +344,22 @@ public class OpenTelemetryExtensionsTests
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
 
-        builder.AddPeacefulTelemetry(options => options.ServiceName = "double-call-service");
-        builder.AddPeacefulTelemetry(options => options.ServiceName = "double-call-service");
+        builder.AddTelemetry(options => options.ServiceName = "double-call-service");
+        builder.AddTelemetry(options => options.ServiceName = "double-call-service");
 
         using var app = builder.Build();
         await app.StartAsync(TestContext.Current.CancellationToken);
         await app.StopAsync(TestContext.Current.CancellationToken);
 
         capture.MissingEndpointWarnings().Should().HaveCount(1,
-            "duplicate AddPeacefulTelemetry calls must not multiply the warning.");
+            "duplicate AddTelemetry calls must not multiply the warning.");
     }
 
     [Fact]
-    public void add_peaceful_telemetry_does_not_load_console_exporter_assembly()
+    public void add_telemetry_does_not_load_console_exporter_assembly()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
-        builder.AddPeacefulTelemetry(options => options.ServiceName = "no-console-exporter-service");
+        builder.AddTelemetry(options => options.ServiceName = "no-console-exporter-service");
         using var app = builder.Build();
         _ = app.Services.GetService<TracerProvider>();
         _ = app.Services.GetService<MeterProvider>();

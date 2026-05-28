@@ -9,7 +9,7 @@ namespace Peaceful.Extensions.Hosting;
 
 public static class CorsExtensions
 {
-    public static WebApplicationBuilder AddPeacefulCors(
+    public static WebApplicationBuilder AddDefaultCorsPolicy(
         this WebApplicationBuilder builder,
         bool allowCredentials = false)
     {

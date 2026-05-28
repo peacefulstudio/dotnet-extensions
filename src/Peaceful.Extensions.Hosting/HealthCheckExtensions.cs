@@ -8,7 +8,7 @@ namespace Peaceful.Extensions.Hosting;
 
 public static class HealthCheckExtensions
 {
-    public static WebApplication MapPeacefulHealthChecks(this WebApplication app)
+    public static WebApplication MapDefaultHealthChecks(this WebApplication app)
     {
         app.MapHealthChecks("/health", new HealthCheckOptions
         {

@@ -8,7 +8,7 @@ namespace Peaceful.Extensions.Hosting;
 
 public static class VersioningExtensions
 {
-    public static WebApplicationBuilder AddPeacefulVersioning(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddVersioning(this WebApplicationBuilder builder)
     {
         builder.Services.AddApiVersioning(options =>
         {
