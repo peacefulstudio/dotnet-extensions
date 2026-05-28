@@ -10,11 +10,11 @@ namespace Peaceful.Extensions.Hosting.Tests;
 public class VersioningExtensionsTests
 {
     [Fact]
-    public void add_peaceful_versioning_registers_api_versioning_services()
+    public void add_versioning_registers_api_versioning_services()
     {
         var builder = WebApplication.CreateBuilder();
 
-        builder.AddPeacefulVersioning();
+        builder.AddVersioning();
 
         using var app = builder.Build();
         var versioningOptions = app.Services.GetService<IApiVersionReader>();
@@ -22,11 +22,11 @@ public class VersioningExtensionsTests
     }
 
     [Fact]
-    public void add_peaceful_versioning_does_not_throw()
+    public void add_versioning_does_not_throw()
     {
         var builder = WebApplication.CreateBuilder();
 
-        var act = () => builder.AddPeacefulVersioning();
+        var act = () => builder.AddVersioning();
 
         act.Should().NotThrow();
     }

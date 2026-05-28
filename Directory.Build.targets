@@ -1,5 +1,6 @@
 <Project>
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <OutputType>Exe</OutputType>
     <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 </Project>

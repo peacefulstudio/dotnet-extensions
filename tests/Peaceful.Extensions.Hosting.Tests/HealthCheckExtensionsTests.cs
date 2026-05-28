@@ -18,7 +18,7 @@ public class HealthCheckExtensionsTests
         await using var app = await CreateAppAsync();
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/health", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -29,7 +29,7 @@ public class HealthCheckExtensionsTests
         await using var app = await CreateAppAsync();
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/health/ready");
+        var response = await client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -40,7 +40,7 @@ public class HealthCheckExtensionsTests
         await using var app = await CreateAppAsync();
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/health/live");
+        var response = await client.GetAsync("/health/live", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -52,7 +52,7 @@ public class HealthCheckExtensionsTests
         builder.Services.AddHealthChecks();
 
         var app = builder.Build();
-        app.MapPeacefulHealthChecks();
+        app.MapDefaultHealthChecks();
         await app.StartAsync();
         return app;
     }

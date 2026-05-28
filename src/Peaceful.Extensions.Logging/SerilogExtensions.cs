@@ -38,7 +38,7 @@ public static partial class SerilogExtensions
 
     /// <summary>
     /// Default probe path prefixes downgraded to <see cref="LogEventLevel.Verbose"/>
-    /// by <see cref="UsePeacefulRequestLogging(WebApplication, IReadOnlyList{string})"/>
+    /// by <see cref="UseRequestLogging(WebApplication, IReadOnlyList{string})"/>
     /// when the response is successful. Wrapped in <see cref="Array.AsReadOnly{T}"/>
     /// so the defaults can't be mutated through a downcast.
     /// </summary>
@@ -98,7 +98,7 @@ public static partial class SerilogExtensions
     /// absolute URI — symmetric with the validation performed by
     /// <c>Peaceful.Extensions.Telemetry.OpenTelemetryExtensions</c>.
     /// </exception>
-    public static WebApplicationBuilder AddPeacefulSerilog(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddDefaultSerilog(this WebApplicationBuilder builder)
     {
         builder.Host.UseSerilog((context, services, configuration) =>
         {
@@ -148,7 +148,7 @@ public static partial class SerilogExtensions
         return builder;
     }
 
-    static void UnregisterMissingEndpointWarning(IServiceCollection services)
+    private static void UnregisterMissingEndpointWarning(IServiceCollection services)
     {
         for (var i = services.Count - 1; i >= 0; i--)
         {
@@ -207,8 +207,8 @@ public static partial class SerilogExtensions
     /// compiled against older versions of this package continue to resolve the
     /// no-arg signature without recompilation.
     /// </remarks>
-    public static WebApplication UsePeacefulRequestLogging(this WebApplication app) =>
-        UsePeacefulRequestLogging(app, DefaultQuietProbePathPrefixes);
+    public static WebApplication UseRequestLogging(this WebApplication app) =>
+        UseRequestLogging(app, DefaultQuietProbePathPrefixes);
 
     /// <summary>
     /// Registers Serilog request logging with Peaceful's standard diagnostic-context
@@ -232,7 +232,7 @@ public static partial class SerilogExtensions
     /// whitespace entries are filtered out. Pass an empty list to disable the
     /// quiet-probe behaviour.
     /// </param>
-    public static WebApplication UsePeacefulRequestLogging(
+    public static WebApplication UseRequestLogging(
         this WebApplication app,
         IReadOnlyList<string> quietProbePathPrefixes)
     {

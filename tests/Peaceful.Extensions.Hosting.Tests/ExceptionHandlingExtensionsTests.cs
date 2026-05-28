@@ -18,7 +18,7 @@ public class ExceptionHandlingExtensionsTests
         await using var app = await CreateAppAsync("Production");
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/throw");
+        var response = await client.GetAsync("/throw", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         response.Content.Headers.ContentType?.MediaType.Should().Be("application/problem+json");
@@ -30,8 +30,8 @@ public class ExceptionHandlingExtensionsTests
         await using var app = await CreateAppAsync("Production");
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/throw");
-        var json = await response.Content.ReadAsStringAsync();
+        var response = await client.GetAsync("/throw", TestContext.Current.CancellationToken);
+        var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
@@ -48,10 +48,10 @@ public class ExceptionHandlingExtensionsTests
         await using var app = await CreateAppAsync("Development");
         var client = app.GetTestClient();
 
-        var response = await client.GetAsync("/throw");
+        var response = await client.GetAsync("/throw", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         content.Should().Contain("InvalidOperationException");
     }
 
@@ -62,7 +62,7 @@ public class ExceptionHandlingExtensionsTests
         builder.Environment.EnvironmentName = environment;
 
         var app = builder.Build();
-        app.UsePeacefulExceptionHandling();
+        app.UseExceptionHandling();
 
         app.MapGet("/throw", (HttpContext _) => throw new InvalidOperationException("Test exception"));
 

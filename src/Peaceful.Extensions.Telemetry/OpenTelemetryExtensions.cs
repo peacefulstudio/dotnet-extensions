@@ -29,7 +29,7 @@ public static partial class OpenTelemetryExtensions
     /// </summary>
     public const string MissingEndpointWarningEventName = "OpenTelemetryEndpointMissing";
 
-    public static WebApplicationBuilder AddPeacefulTelemetry(
+    public static WebApplicationBuilder AddTelemetry(
         this WebApplicationBuilder builder,
         Action<OpenTelemetryOptions> configure)
     {
@@ -115,7 +115,7 @@ public static partial class OpenTelemetryExtensions
         return builder;
     }
 
-    static void UnregisterMissingEndpointWarning(IServiceCollection services)
+    private static void UnregisterMissingEndpointWarning(IServiceCollection services)
     {
         for (var i = services.Count - 1; i >= 0; i--)
         {

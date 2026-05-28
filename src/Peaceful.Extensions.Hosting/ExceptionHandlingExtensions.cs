@@ -15,7 +15,7 @@ public static partial class ExceptionHandlingExtensions
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception on {Method} {Path}")]
     private static partial void LogUnhandledException(ILogger logger, Exception? exception, string method, string? path);
 
-    public static WebApplication UsePeacefulExceptionHandling(this WebApplication app)
+    public static WebApplication UseExceptionHandling(this WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
