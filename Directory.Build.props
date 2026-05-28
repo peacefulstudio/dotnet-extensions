@@ -7,11 +7,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
-    <Authors>Peaceful Studio</Authors>
+    <Authors>Peaceful Studio OÜ</Authors>
     <Company>Peaceful Studio OÜ</Company>
     <Copyright>Copyright (c) 2026 Peaceful Studio OÜ. All rights reserved.</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

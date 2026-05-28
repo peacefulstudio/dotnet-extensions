@@ -148,7 +148,7 @@ public static partial class SerilogExtensions
         return builder;
     }
 
-    static void UnregisterMissingEndpointWarning(IServiceCollection services)
+    private static void UnregisterMissingEndpointWarning(IServiceCollection services)
     {
         for (var i = services.Count - 1; i >= 0; i--)
         {

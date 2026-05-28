@@ -8,6 +8,13 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+### Changed
+- NuGet package metadata `Authors` field: `Peaceful Studio` → `Peaceful Studio OÜ`
+  (now matches `Company`; visible on nuget.org).
+
+### Dependencies
+- `OpenTelemetry.Instrumentation.GrpcNetClient` 1.15.0-beta.1 → 1.15.1-beta.1
+
 ## [0.1.3] - 2026-05-04
 
 ### Changed
