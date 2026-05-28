@@ -10,7 +10,7 @@ namespace Peaceful.Extensions.Hosting.Tests;
 public class CorsExtensionsTests
 {
     [Fact]
-    public void add_cors_with_origins_registers_cors_services()
+    public void add_default_cors_policy_with_origins_registers_cors_services()
     {
         var builder = WebApplication.CreateBuilder();
         builder.Configuration["Cors:AllowedOrigins:0"] = "https://example.com";
@@ -23,7 +23,7 @@ public class CorsExtensionsTests
     }
 
     [Fact]
-    public void add_cors_allows_any_origin_in_development()
+    public void add_default_cors_policy_allows_any_origin_in_development()
     {
         var builder = WebApplication.CreateBuilder();
         builder.Environment.EnvironmentName = "Development";
@@ -34,7 +34,7 @@ public class CorsExtensionsTests
     }
 
     [Fact]
-    public void add_cors_throws_without_origins_in_production()
+    public void add_default_cors_policy_throws_without_origins_in_production()
     {
         var builder = WebApplication.CreateBuilder();
         builder.Environment.EnvironmentName = "Production";
@@ -46,7 +46,7 @@ public class CorsExtensionsTests
     }
 
     [Fact]
-    public void add_cors_with_credentials_and_origins_does_not_throw()
+    public void add_default_cors_policy_with_credentials_and_origins_does_not_throw()
     {
         var builder = WebApplication.CreateBuilder();
         builder.Configuration["Cors:AllowedOrigins:0"] = "https://example.com";
