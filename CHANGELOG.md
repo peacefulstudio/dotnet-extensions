@@ -8,6 +8,25 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-28
+
+### Changed — BREAKING
+- **Breaking:** Public extension methods renamed to drop the `Peaceful` brand
+  prefix (already carried by the `Peaceful.Extensions.*` namespace). Methods
+  whose unbranded name would shadow a framework / popular-library method got a
+  `Default` qualifier instead, so IntelliSense at the call site still
+  distinguishes the opinionated wiring from the underlying primitive. Rename
+  map (signatures otherwise unchanged):
+  - `AddPeacefulSerilog` → `AddDefaultSerilog`
+  - `UsePeacefulRequestLogging` → `UseRequestLogging`
+  - `AddPeacefulTelemetry` → `AddTelemetry`
+  - `AddPeacefulVersioning` → `AddVersioning`
+  - `AddPeacefulCors` → `AddDefaultCorsPolicy`
+  - `AddPeacefulOpenApi` → `AddDefaultOpenApi`
+  - `MapPeacefulScalar` → `MapScalar`
+  - `MapPeacefulHealthChecks` → `MapDefaultHealthChecks`
+  - `UsePeacefulExceptionHandling` → `UseExceptionHandling`
+
 ### Changed
 - **Breaking:** Public extension methods renamed to drop the `Peaceful` brand
   prefix (already carried by the `Peaceful.Extensions.*` namespace). Methods
@@ -165,7 +184,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.0...v0.1.1
