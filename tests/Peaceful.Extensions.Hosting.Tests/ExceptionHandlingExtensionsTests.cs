@@ -62,7 +62,7 @@ public class ExceptionHandlingExtensionsTests
         builder.Environment.EnvironmentName = environment;
 
         var app = builder.Build();
-        app.UsePeacefulExceptionHandling();
+        app.UseExceptionHandling();
 
         app.MapGet("/throw", (HttpContext _) => throw new InvalidOperationException("Test exception"));
 

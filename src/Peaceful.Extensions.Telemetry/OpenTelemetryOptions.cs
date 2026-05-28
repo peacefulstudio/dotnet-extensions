@@ -3,7 +3,7 @@
 namespace Peaceful.Extensions.Telemetry;
 
 /// <summary>
-/// Configures <c>AddPeacefulTelemetry</c>. C# property names match config
+/// Configures <c>AddTelemetry</c>. C# property names match config
 /// keys 1:1 (no attribute mapping), and the section name is pinned via
 /// <see cref="SectionName"/> — so the public config contract is composable
 /// from <c>nameof</c> against this class:

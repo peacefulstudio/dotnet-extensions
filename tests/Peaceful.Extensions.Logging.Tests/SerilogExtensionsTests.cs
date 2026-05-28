@@ -16,14 +16,14 @@ namespace Peaceful.Extensions.Logging.Tests;
 public class SerilogExtensionsTests
 {
     [Fact]
-    public async Task add_peaceful_serilog_configures_serilog_on_host()
+    public async Task add_default_serilog_configures_serilog_on_host()
     {
         var previousLogger = Log.Logger;
         try
         {
             var builder = WebApplication.CreateBuilder();
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             await using var app = builder.Build();
             Log.Logger.Should().NotBeNull();
@@ -35,7 +35,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_serilog_wires_otlp_sink_when_endpoint_is_valid()
+    public async Task add_default_serilog_wires_otlp_sink_when_endpoint_is_valid()
     {
         var previousLogger = Log.Logger;
         var selfLogOutput = new System.Text.StringBuilder();
@@ -51,7 +51,7 @@ public class SerilogExtensionsTests
                 [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://localhost:4317",
             });
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             await using var app = builder.Build();
             // Force the Serilog configure callback to run by resolving any
@@ -71,7 +71,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_serilog_does_not_wire_otlp_sink_when_endpoint_is_blank()
+    public async Task add_default_serilog_does_not_wire_otlp_sink_when_endpoint_is_blank()
     {
         var previousLogger = Log.Logger;
         var selfLogOutput = new System.Text.StringBuilder();
@@ -87,7 +87,7 @@ public class SerilogExtensionsTests
                 [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "  ",
             });
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             await using var app = builder.Build();
             _ = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SerilogExtensionsTests>>();
@@ -109,7 +109,7 @@ public class SerilogExtensionsTests
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("\t")]
-    public async Task add_peaceful_serilog_warns_when_endpoint_is_blank(string? endpoint)
+    public async Task add_default_serilog_warns_when_endpoint_is_blank(string? endpoint)
     {
         var previousLogger = Log.Logger;
         var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
@@ -122,7 +122,7 @@ public class SerilogExtensionsTests
             });
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             using var app = builder.Build();
             await app.StartAsync(TestContext.Current.CancellationToken);
@@ -141,7 +141,7 @@ public class SerilogExtensionsTests
     [InlineData("Development")]
     [InlineData("Staging")]
     [InlineData("Production")]
-    public async Task add_peaceful_serilog_warns_in_every_environment(string environment)
+    public async Task add_default_serilog_warns_in_every_environment(string environment)
     {
         var previousLogger = Log.Logger;
         var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
@@ -150,7 +150,7 @@ public class SerilogExtensionsTests
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             using var app = builder.Build();
             await app.StartAsync(TestContext.Current.CancellationToken);
@@ -166,7 +166,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_serilog_does_not_warn_when_endpoint_is_configured()
+    public async Task add_default_serilog_does_not_warn_when_endpoint_is_configured()
     {
         var previousLogger = Log.Logger;
         var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
@@ -179,7 +179,7 @@ public class SerilogExtensionsTests
             });
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             using var app = builder.Build();
             await app.StartAsync(TestContext.Current.CancellationToken);
@@ -195,10 +195,10 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_serilog_then_configuration_resolves_endpoint_does_not_warn()
+    public async Task add_default_serilog_then_configuration_resolves_endpoint_does_not_warn()
     {
         // Regression for the registration-time-vs-host-build-time asymmetry:
-        // AddPeacefulSerilog reads builder.Configuration at extension-call
+        // AddDefaultSerilog reads builder.Configuration at extension-call
         // time to decide whether to register MissingEndpointWarning, but
         // UseSerilog reads context.Configuration at host-build time to
         // decide whether to wire the OTLP sink. If a later configuration
@@ -212,7 +212,7 @@ public class SerilogExtensionsTests
             var builder = WebApplication.CreateBuilder();
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://collector:4317",
@@ -232,7 +232,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_serilog_called_first_without_then_with_endpoint_does_not_warn()
+    public async Task add_default_serilog_called_first_without_then_with_endpoint_does_not_warn()
     {
         var previousLogger = Log.Logger;
         var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
@@ -241,12 +241,12 @@ public class SerilogExtensionsTests
             var builder = WebApplication.CreateBuilder();
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://collector:4317",
             });
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             using var app = builder.Build();
             await app.StartAsync(TestContext.Current.CancellationToken);
@@ -262,7 +262,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task add_peaceful_serilog_called_twice_without_endpoint_logs_warning_exactly_once()
+    public async Task add_default_serilog_called_twice_without_endpoint_logs_warning_exactly_once()
     {
         var previousLogger = Log.Logger;
         var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
@@ -271,15 +271,15 @@ public class SerilogExtensionsTests
             var builder = WebApplication.CreateBuilder();
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
-            builder.AddPeacefulSerilog();
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
+            builder.AddDefaultSerilog();
 
             using var app = builder.Build();
             await app.StartAsync(TestContext.Current.CancellationToken);
             await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
-                "duplicate AddPeacefulSerilog calls must not multiply the warning.");
+                "duplicate AddDefaultSerilog calls must not multiply the warning.");
         }
         finally
         {
@@ -306,7 +306,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public void add_peaceful_serilog_throws_when_endpoint_is_malformed_uri()
+    public void add_default_serilog_throws_when_endpoint_is_malformed_uri()
     {
         // Symmetric with Peaceful.Extensions.Telemetry.OpenTelemetryExtensions:
         // a non-blank but invalid endpoint must fail loudly at startup rather
@@ -323,7 +323,7 @@ public class SerilogExtensionsTests
                 [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "not a uri",
             });
 
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             var act = () => builder.Build();
 
@@ -337,7 +337,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public void add_peaceful_serilog_creates_bootstrap_logger()
+    public void add_default_serilog_creates_bootstrap_logger()
     {
         var previousLogger = Log.Logger;
         try
@@ -354,17 +354,17 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task use_peaceful_request_logging_does_not_throw()
+    public async Task use_request_logging_does_not_throw()
     {
         var previousLogger = Log.Logger;
         try
         {
             var builder = WebApplication.CreateBuilder();
             builder.WebHost.UseTestServer();
-            builder.AddPeacefulSerilog();
+            builder.AddDefaultSerilog();
 
             await using var app = builder.Build();
-            app.UsePeacefulRequestLogging();
+            app.UseRequestLogging();
             app.MapGet("/test", () => "ok");
             await app.StartAsync(TestContext.Current.CancellationToken);
 
@@ -398,7 +398,7 @@ public class SerilogExtensionsTests
     [InlineData("/api/markets", 200, LogEventLevel.Information)]
     [InlineData("/api/markets", 404, LogEventLevel.Information)] // 4xx on non-probe stays Information (Serilog default)
     [InlineData("/api/markets", 503, LogEventLevel.Error)]
-    public async Task use_peaceful_request_logging_applies_quiet_probe_levels(
+    public async Task use_request_logging_applies_quiet_probe_levels(
         string path, int statusCode, LogEventLevel expectedLevel)
     {
         var previousLogger = Log.Logger;
@@ -415,7 +415,7 @@ public class SerilogExtensionsTests
             builder.Host.UseSerilog();
 
             await using var app = builder.Build();
-            app.UsePeacefulRequestLogging();
+            app.UseRequestLogging();
             app.Map(path, ctx =>
             {
                 ctx.Response.StatusCode = statusCode;
@@ -452,7 +452,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task use_peaceful_request_logging_silences_custom_probe_paths()
+    public async Task use_request_logging_silences_custom_probe_paths()
     {
         // Second overload: caller can supply their own probe paths.
         var previousLogger = Log.Logger;
@@ -469,7 +469,7 @@ public class SerilogExtensionsTests
             builder.Host.UseSerilog();
 
             await using var app = builder.Build();
-            app.UsePeacefulRequestLogging(CustomProbePrefixes);
+            app.UseRequestLogging(CustomProbePrefixes);
             app.Map("/custom/probe", ctx => Task.CompletedTask);
             await app.StartAsync(TestContext.Current.CancellationToken);
 
@@ -491,7 +491,7 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task use_peaceful_request_logging_with_empty_list_keeps_probes_at_information()
+    public async Task use_request_logging_with_empty_list_keeps_probes_at_information()
     {
         // Empty list disables the quiet-probe behaviour entirely.
         var previousLogger = Log.Logger;
@@ -508,7 +508,7 @@ public class SerilogExtensionsTests
             builder.Host.UseSerilog();
 
             await using var app = builder.Build();
-            app.UsePeacefulRequestLogging(Array.Empty<string>());
+            app.UseRequestLogging(Array.Empty<string>());
             app.Map("/health/live", ctx => Task.CompletedTask);
             await app.StartAsync(TestContext.Current.CancellationToken);
 
@@ -530,12 +530,12 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
-    public async Task use_peaceful_request_logging_rejects_null_prefix_list()
+    public async Task use_request_logging_rejects_null_prefix_list()
     {
         var builder = WebApplication.CreateBuilder();
         await using var app = builder.Build();
 
-        var act = () => app.UsePeacefulRequestLogging(null!);
+        var act = () => app.UseRequestLogging(null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("quietProbePathPrefixes");
     }

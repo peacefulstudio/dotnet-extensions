@@ -9,7 +9,7 @@ namespace Peaceful.Extensions.Hosting;
 
 public static class ScalarExtensions
 {
-    public static WebApplicationBuilder AddPeacefulOpenApi(
+    public static WebApplicationBuilder AddDefaultOpenApi(
         this WebApplicationBuilder builder,
         string title,
         string description)
@@ -36,7 +36,7 @@ public static class ScalarExtensions
         return builder;
     }
 
-    public static WebApplication MapPeacefulScalar(this WebApplication app, string title)
+    public static WebApplication MapScalar(this WebApplication app, string title)
     {
         app.MapOpenApi("/openapi/{documentName}.yaml").AllowAnonymous();
         app.MapScalarApiReference(options =>

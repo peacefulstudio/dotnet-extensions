@@ -9,6 +9,21 @@ Pre-1.0 minor bumps may include breaking changes.
 ## [Unreleased]
 
 ### Changed
+- **Breaking:** Public extension methods renamed to drop the `Peaceful` brand
+  prefix (already carried by the `Peaceful.Extensions.*` namespace). Methods
+  whose unbranded name would shadow a framework / popular-library method got a
+  `Default` qualifier instead, so IntelliSense at the call site still
+  distinguishes the opinionated wiring from the underlying primitive. Rename
+  map (signatures otherwise unchanged):
+  - `AddPeacefulSerilog` → `AddDefaultSerilog`
+  - `UsePeacefulRequestLogging` → `UseRequestLogging`
+  - `AddPeacefulTelemetry` → `AddTelemetry`
+  - `AddPeacefulVersioning` → `AddVersioning`
+  - `AddPeacefulCors` → `AddDefaultCorsPolicy`
+  - `AddPeacefulOpenApi` → `AddDefaultOpenApi`
+  - `MapPeacefulScalar` → `MapScalar`
+  - `MapPeacefulHealthChecks` → `MapDefaultHealthChecks`
+  - `UsePeacefulExceptionHandling` → `UseExceptionHandling`
 - NuGet package metadata `Authors` field: `Peaceful Studio` → `Peaceful Studio OÜ`
   (now matches `Company`; visible on nuget.org).
 
