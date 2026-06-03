@@ -8,6 +8,17 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ## [Unreleased]
 
+### Added
+- `LICENSE` (Apache-2.0) and `NOTICE` files at repo root — aligns the repository
+  with the `<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>` already
+  declared in `Directory.Build.props`. (#72)
+
+### Changed
+- SPDX Apache-2.0 headers added to all 22 `.cs` source files; legacy
+  "All rights reserved" notices replaced. (#72)
+- `<Copyright>` tag in `Directory.Build.props` normalized to drop "All rights
+  reserved" — incompatible with an Apache-2.0 license expression. (#72)
+
 ## [0.2.0] - 2026-05-28
 
 ### Changed — BREAKING
