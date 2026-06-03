@@ -169,9 +169,9 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.3...v0.2.0
-[0.1.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...v0.1.3
-[0.1.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/peacefulstudio/dotnet-extensions/releases/tag/v0.1.0
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions-internal/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/peacefulstudio/dotnet-extensions-internal/compare/v0.1.3...v0.2.0
+[0.1.3]: https://github.com/peacefulstudio/dotnet-extensions-internal/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/peacefulstudio/dotnet-extensions-internal/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/peacefulstudio/dotnet-extensions-internal/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/peacefulstudio/dotnet-extensions-internal/releases/tag/v0.1.0
