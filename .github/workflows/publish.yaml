@@ -1,0 +1,18 @@
+name: Publish NuGet Packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version_override:
+        description: 'Override version (leave empty for auto-calculated)'
+        required: false
+        type: string
+
+jobs:
+  publish:
+    uses: peacefulstudio/github-actions/.github/workflows/csharp-publish-public.yaml@v1
+    secrets: inherit
+    with:
+      version_override: ${{ inputs.version_override }}
