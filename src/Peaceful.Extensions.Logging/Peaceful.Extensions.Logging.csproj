@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Serilog bootstrap, request enrichment, and static logger factory for Peaceful Studio projects.</Description>
+    <PackageTags>serilog;logging;aspnetcore;structured-logging;otlp;opentelemetry;enricher;trace-context;bootstrap-logger;extensions</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>

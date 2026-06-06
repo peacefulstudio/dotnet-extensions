@@ -29,10 +29,41 @@ public sealed class OpenTelemetryOptions
     /// </summary>
     public const string SectionName = "OpenTelemetry";
 
+    /// <summary>
+    /// Logical service name reported as the <c>service.name</c> resource
+    /// attribute, and also used as the activity source and meter name for the
+    /// application's own instrumentation. Defaults to <c>"unknown"</c>; must be
+    /// non-empty or <c>AddTelemetry</c> throws.
+    /// </summary>
     public string ServiceName { get; set; } = "unknown";
+
+    /// <summary>
+    /// Service version reported as the <c>service.version</c> resource
+    /// attribute. Defaults to <c>"0.1.0"</c>.
+    /// </summary>
     public string ServiceVersion { get; set; } = "0.1.0";
+
+    /// <summary>
+    /// When <see langword="true"/>, adds gRPC client instrumentation to the
+    /// tracer (without suppressing downstream HttpClient instrumentation).
+    /// Defaults to <see langword="false"/>.
+    /// </summary>
     public bool EnableGrpcInstrumentation { get; set; }
+
+    /// <summary>
+    /// OTLP collector endpoint URI (e.g. <c>http://otel-collector:4317</c>).
+    /// When set—or when resolved from the <c>OpenTelemetry:Endpoint</c>
+    /// configuration key—an OTLP exporter is added for both traces and metrics;
+    /// otherwise no exporter is registered and a startup warning is logged. Must
+    /// be a valid absolute URI or <c>AddTelemetry</c> throws.
+    /// </summary>
     public string? Endpoint { get; set; }
+
+    /// <summary>
+    /// Optional service instance identifier reported as the
+    /// <c>service.instance.id</c> resource attribute, used to distinguish
+    /// individual instances of the same service.
+    /// </summary>
     public string? ServiceInstanceId { get; set; }
 
     private double _traceSamplingRatio = 1.0;

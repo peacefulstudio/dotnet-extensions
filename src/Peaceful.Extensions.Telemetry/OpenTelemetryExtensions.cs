@@ -12,6 +12,11 @@ using OpenTelemetry.Trace;
 
 namespace Peaceful.Extensions.Telemetry;
 
+/// <summary>
+/// <see cref="WebApplicationBuilder"/> extensions that wire up OpenTelemetry
+/// tracing and metrics from an <see cref="OpenTelemetryOptions"/> instance,
+/// exporting over OTLP when an endpoint is configured.
+/// </summary>
 public static partial class OpenTelemetryExtensions
 {
     /// <summary>
@@ -30,6 +35,30 @@ public static partial class OpenTelemetryExtensions
     /// </summary>
     public const string MissingEndpointWarningEventName = "OpenTelemetryEndpointMissing";
 
+    /// <summary>
+    /// Registers OpenTelemetry tracing and metrics on the builder. Configures
+    /// resource attributes (service name, version and instance id), ASP.NET
+    /// Core and HttpClient instrumentation, a head-based sampler derived from
+    /// <see cref="OpenTelemetryOptions.TraceSamplingRatio"/>, and—when an OTLP
+    /// endpoint is resolved from <see cref="OpenTelemetryOptions.Endpoint"/> or
+    /// the <see cref="OpenTelemetryEndpointConfigKey"/> configuration key—an
+    /// OTLP exporter for both signals. When no endpoint is resolved a hosted
+    /// service is registered to log a startup warning.
+    /// </summary>
+    /// <param name="builder">The web application builder to configure.</param>
+    /// <param name="configure">
+    /// Callback used to populate the <see cref="OpenTelemetryOptions"/> instance
+    /// applied to the telemetry pipeline.
+    /// </param>
+    /// <returns>The same <paramref name="builder"/> instance, to allow chaining.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="configure"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the resolved <see cref="OpenTelemetryOptions.ServiceName"/> is
+    /// null, empty or whitespace, or when a configured OTLP endpoint is not a
+    /// valid absolute URI.
+    /// </exception>
     public static WebApplicationBuilder AddTelemetry(
         this WebApplicationBuilder builder,
         Action<OpenTelemetryOptions> configure)

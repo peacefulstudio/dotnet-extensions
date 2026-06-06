@@ -25,6 +25,18 @@ namespace Peaceful.Extensions.Logging;
 /// </remarks>
 public sealed class TraceContextEnricher : ILogEventEnricher
 {
+    /// <summary>
+    /// Adds <c>TraceId</c> and <c>SpanId</c> properties to <paramref name="logEvent"/>
+    /// from <see cref="Activity.Current"/>. No-ops when there is no current
+    /// activity, and skips either property whose value is the all-zero default.
+    /// Existing properties of the same name are preserved.
+    /// </summary>
+    /// <param name="logEvent">The log event to enrich.</param>
+    /// <param name="propertyFactory">Factory used to create the added properties.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="logEvent"/> or
+    /// <paramref name="propertyFactory"/> is <see langword="null"/>.
+    /// </exception>
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
         ArgumentNullException.ThrowIfNull(logEvent);

@@ -11,11 +11,24 @@ using Microsoft.Extensions.Logging;
 
 namespace Peaceful.Extensions.Hosting;
 
+/// <summary>
+/// Peaceful's standard exception-handling wiring for ASP.NET Core hosts: the
+/// developer exception page in Development, and a logged RFC 7807
+/// problem-details response with HSTS everywhere else.
+/// </summary>
 public static partial class ExceptionHandlingExtensions
 {
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception on {Method} {Path}")]
     private static partial void LogUnhandledException(ILogger logger, Exception? exception, string method, string? path);
 
+    /// <summary>
+    /// Installs environment-appropriate exception handling. In Development the
+    /// developer exception page is used; in every other environment unhandled
+    /// exceptions are logged and converted into an <c>application/problem+json</c>
+    /// 500 response carrying the current trace identifier, and HSTS is enabled.
+    /// </summary>
+    /// <param name="app">The application whose request pipeline is being configured.</param>
+    /// <returns>The same <paramref name="app"/> instance, to allow chaining.</returns>
     public static WebApplication UseExceptionHandling(this WebApplication app)
     {
         if (app.Environment.IsDevelopment())
