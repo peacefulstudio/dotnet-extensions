@@ -9,9 +9,29 @@ Pre-1.0 minor bumps may include breaking changes.
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [0.2.1-preview.1] - 2026-06-06
+
+### Added
 - `LICENSE` (Apache-2.0) and `NOTICE` files at repo root — aligns the repository
   with the `<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>` already
   declared in `Directory.Build.props`. (#72)
+- Ship XML documentation in all three packages, so consumers get IntelliSense
+  docs for the public API. (#78)
+- Publish NuGet symbol packages (`.snupkg`) with Source Link and deterministic
+  builds, so consumers can step into the library sources while debugging. (#78)
+- Add a package icon, README, and search tags to each published package for a
+  richer nuget.org listing. (#78)
 
 ### Changed
 - SPDX Apache-2.0 headers added to all 22 `.cs` source files; legacy
@@ -183,7 +203,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...HEAD
+[0.2.1-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.0...v0.2.1-preview.1
 [0.2.0]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.1...v0.1.2

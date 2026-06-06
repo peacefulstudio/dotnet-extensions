@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>Health checks, exception handling, Scalar UI, API versioning, and CORS for Peaceful Studio ASP.NET Core projects.</Description>
+    <PackageTags>aspnetcore;hosting;cors;exception-handling;healthchecks;openapi;scalar;api-versioning;problem-details;extensions</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>

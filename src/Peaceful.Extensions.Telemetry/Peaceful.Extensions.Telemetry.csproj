@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Description>OpenTelemetry tracing and metrics configuration for Peaceful Studio projects.</Description>
+    <PackageTags>opentelemetry;otel;tracing;metrics;otlp;observability;telemetry;aspnetcore;instrumentation;extensions</PackageTags>
     <IsPackable>true</IsPackable>
     <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>

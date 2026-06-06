@@ -1,5 +1,6 @@
-# Claude
+# LLMs
 .claude/
+.agents/
 
 # Environment
 .env

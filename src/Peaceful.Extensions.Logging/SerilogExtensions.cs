@@ -15,6 +15,12 @@ using Serilog.Formatting.Compact;
 
 namespace Peaceful.Extensions.Logging;
 
+/// <summary>
+/// Peaceful's standard Serilog wiring for ASP.NET Core hosts: a compact-JSON
+/// bootstrap logger, host integration with trace/span correlation and an
+/// optional OTLP logs sink, and request logging that silences successful
+/// health probes.
+/// </summary>
 public static partial class SerilogExtensions
 {
     /// <summary>
