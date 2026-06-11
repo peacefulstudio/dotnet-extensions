@@ -12,6 +12,9 @@ on:
 
 jobs:
   publish:
+    permissions:
+      contents: read
+      id-token: write
     uses: peacefulstudio/github-actions/.github/workflows/csharp-publish-public.yaml@v1
     secrets: inherit
     with:
