@@ -3,7 +3,7 @@
 
 using System.Diagnostics;
 using System.Text.Json;
-using FluentAssertions;
+using AwesomeAssertions;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;

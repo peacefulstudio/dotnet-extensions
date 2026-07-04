@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Peaceful Studio OÜ
 // SPDX-License-Identifier: Apache-2.0
 
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;

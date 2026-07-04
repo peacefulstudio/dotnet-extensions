@@ -20,6 +20,31 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ### Security
 
+## [0.2.1-preview.3] - 2026-07-04
+
+### Changed
+- `Scalar.AspNetCore` 2.16.3 → 2.16.9. (#86, #88, #92, #96, #98)
+- `OpenTelemetry.Instrumentation.AspNetCore` 1.15.2 → 1.16.0. (#89)
+- `OpenTelemetry.Instrumentation.Http` 1.15.1 → 1.16.0. (#90)
+- `OpenTelemetry.Instrumentation.GrpcNetClient` 1.15.1-beta.1 → 1.16.0-beta.1,
+  aligning it with the OpenTelemetry 1.16 instrumentation train. (#101)
+
+### Security
+- Pin `Microsoft.OpenApi` to 2.7.5 to override the vulnerable transitive 2.0.0
+  dragged in by `Microsoft.AspNetCore.OpenApi`, clearing NU1903
+  (GHSA-v5pm-xwqc-g5wc) and unblocking source-wired downstream builds. (#99)
+
+## [0.2.1-preview.2] - 2026-06-12
+
+Dependency-bump release. No source changes.
+
+### Dependencies
+- `Scalar.AspNetCore` 2.14.14 → 2.16.2 (#82)
+- `Scalar.AspNetCore` 2.16.2 → 2.16.3 (#85)
+- `Microsoft.AspNetCore.OpenApi` 10.0.8 → 10.0.9 (#80)
+- `OpenTelemetry.Extensions.Hosting` 1.15.3 → 1.16.0 (#84)
+- `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.3 → 1.16.0 (#83)
+
 ## [0.2.1-preview.1] - 2026-06-06
 
 ### Added
@@ -203,7 +228,9 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.3...HEAD
+[0.2.1-preview.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...v0.2.1-preview.3
+[0.2.1-preview.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...v0.2.1-preview.2
 [0.2.1-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.0...v0.2.1-preview.1
 [0.2.0]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.1.2...v0.1.3
