@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Net;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -117,6 +117,7 @@ public class SerilogExtensionsTests
         try
         {
             var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseTestServer();
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [SerilogExtensions.OpenTelemetryEndpointConfigKey] = endpoint,
@@ -149,6 +150,7 @@ public class SerilogExtensionsTests
         try
         {
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+            builder.WebHost.UseTestServer();
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
             builder.AddDefaultSerilog();
@@ -174,6 +176,7 @@ public class SerilogExtensionsTests
         try
         {
             var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseTestServer();
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://localhost:4317",
@@ -211,6 +214,7 @@ public class SerilogExtensionsTests
         try
         {
             var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseTestServer();
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
             builder.AddDefaultSerilog();
@@ -240,6 +244,7 @@ public class SerilogExtensionsTests
         try
         {
             var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseTestServer();
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
             builder.AddDefaultSerilog();
@@ -270,6 +275,7 @@ public class SerilogExtensionsTests
         try
         {
             var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseTestServer();
             builder.Services.AddSingleton<Serilog.Core.ILogEventSink>(new CollectingSink(events));
 
             builder.AddDefaultSerilog();

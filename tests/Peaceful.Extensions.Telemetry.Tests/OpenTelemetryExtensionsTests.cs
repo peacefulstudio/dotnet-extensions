@@ -3,8 +3,9 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -275,6 +276,7 @@ public class OpenTelemetryExtensionsTests
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+        builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
@@ -294,6 +296,7 @@ public class OpenTelemetryExtensionsTests
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
@@ -317,6 +320,7 @@ public class OpenTelemetryExtensionsTests
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
@@ -341,6 +345,7 @@ public class OpenTelemetryExtensionsTests
     {
         var capture = new CapturingLoggerProvider();
         var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
         builder.Logging.ClearProviders();
         builder.Logging.AddProvider(capture);
         builder.Logging.SetMinimumLevel(LogLevel.Trace);
