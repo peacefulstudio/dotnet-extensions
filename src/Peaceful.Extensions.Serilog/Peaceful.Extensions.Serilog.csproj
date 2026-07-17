@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Serilog bootstrap logger, ASP.NET Core host wiring, and request-logging composition helpers for Peaceful Studio projects.</Description>
+    <PackageTags>serilog;logging;aspnetcore;structured-logging;otlp;opentelemetry;enricher;trace-context;bootstrap-logger;extensions</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Enrichers.Environment" />
+    <PackageReference Include="Serilog.Enrichers.Thread" />
+    <PackageReference Include="Serilog.Formatting.Compact" />
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <!--
+      Re-export OpenTelemetryEndpointConfigKey from the Telemetry package so
+      both packages compose the same nameof-derived config key from a single
+      source — no parallel string literals to drift out of sync.
+    -->
+    <ProjectReference Include="..\Peaceful.Extensions.Telemetry\Peaceful.Extensions.Telemetry.csproj" />
+  </ItemGroup>
+</Project>
