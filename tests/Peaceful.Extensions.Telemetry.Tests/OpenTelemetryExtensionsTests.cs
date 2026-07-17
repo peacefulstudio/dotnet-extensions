@@ -373,7 +373,7 @@ public class OpenTelemetryExtensionsTests
         AppDomain.CurrentDomain.GetAssemblies()
             .Select(a => a.GetName().Name)
             .Should().NotContain("OpenTelemetry.Exporter.Console",
-                "the Development console-exporter fallback was deliberately removed (issue #45) — the package is no longer referenced.");
+                "the Development console-exporter fallback was deliberately removed — the package is no longer referenced.");
     }
 
     private sealed class CapturingLoggerProvider : ILoggerProvider
