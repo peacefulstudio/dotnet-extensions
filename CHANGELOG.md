@@ -20,6 +20,38 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ### Security
 
+## [0.3.0-preview.1] - 2026-07-17
+
+### Added
+- `Peaceful.Extensions.Serilog` package: the Serilog bootstrap logger
+  (`CreateBootstrapLogger`), ASP.NET Core host wiring (`AddDefaultSerilog`),
+  and request-logging composition helper (`UseRequestLogging`) that used to
+  ship in `Peaceful.Extensions.Logging`, moved essentially verbatim under
+  the `Peaceful.Extensions.Serilog` namespace. `Peaceful.Extensions.Hosting`
+  stays Serilog-free — this is the entire reason the helpers live in their
+  own package rather than folding into Hosting.
+
+### Changed
+- Serilog `SelfLog` diagnostics emitted by the moved helpers now carry the
+  `Peaceful.Extensions.Serilog:` prefix instead of
+  `Peaceful.Extensions.Logging:`; update any log-scraping that greps for the
+  old prefix.
+
+### Removed
+- **Breaking:** `Peaceful.Extensions.Logging` package removed. Its Serilog
+  composition helpers moved to the new `Peaceful.Extensions.Serilog` package
+  (see Added); consumers update their `PackageReference` and swap
+  `using Peaceful.Extensions.Logging;` for
+  `using Peaceful.Extensions.Serilog;`.
+- **Breaking:** `StaticLoggerFactory` is deleted outright and was not
+  ported to the new package. It was a static/ambient gateway to an
+  `ILoggerFactory` for code that couldn't take a logger through DI — a
+  pattern the .NET team has repeatedly declined to support for library code,
+  and one that caused real bugs in practice: loggers silently discarded
+  their output whenever `Configure` hadn't run yet, with initialization-order
+  and last-`Configure`-wins hazards on top. Callers depending on it should
+  take `ILogger<T>` through constructor injection instead.
+
 ## [0.2.2-preview.1] - 2026-07-17
 
 Dependency-bump release. No source changes.
@@ -239,7 +271,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.2-preview.1...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.0-preview.1...HEAD
+[0.3.0-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.2-preview.1...v0.3.0-preview.1
 [0.2.2-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.3...v0.2.2-preview.1
 [0.2.1-preview.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...v0.2.1-preview.3
 [0.2.1-preview.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...v0.2.1-preview.2
