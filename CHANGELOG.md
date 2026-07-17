@@ -20,6 +20,17 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ### Security
 
+## [0.2.2-preview.1] - 2026-07-17
+
+Dependency-bump release. No source changes.
+
+### Dependencies
+- `Scalar.AspNetCore` 2.16.9 → 2.16.13 (#105, #107, #115)
+- `Microsoft.AspNetCore.OpenApi` 10.0.9 → 10.0.10 (#112)
+- `Microsoft.OpenApi` 2.7.5 → 2.11.0, advancing the GHSA-v5pm-xwqc-g5wc
+  security pin within 2.x (#109, #118)
+- `Microsoft.SourceLink.GitHub` 10.0.300 → 10.0.301 (#114)
+
 ## [0.2.1-preview.3] - 2026-07-04
 
 ### Changed
@@ -228,7 +239,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.3...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.2-preview.1...HEAD
+[0.2.2-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.3...v0.2.2-preview.1
 [0.2.1-preview.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...v0.2.1-preview.3
 [0.2.1-preview.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...v0.2.1-preview.2
 [0.2.1-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.0...v0.2.1-preview.1
