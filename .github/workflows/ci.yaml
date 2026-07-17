@@ -67,9 +67,9 @@ jobs:
           set -euo pipefail
           mkdir -p coverage
           shopt -s globstar nullglob
-          cobertura_files=(tests/**/bin/Release/net*/**/*.cobertura.xml)
+          cobertura_files=(TestResults/**/*.cobertura.xml tests/**/bin/Release/net*/**/*.cobertura.xml)
           if [ ${#cobertura_files[@]} -eq 0 ]; then
-            echo "::error::No .cobertura.xml files produced under tests/ — did MTP coverage extension run?"
+            echo "::error::No .cobertura.xml files produced — did MTP coverage extension run?"
             exit 1
           fi
           echo "Merging ${#cobertura_files[@]} cobertura files: ${cobertura_files[*]}"
