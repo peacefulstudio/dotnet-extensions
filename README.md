@@ -16,14 +16,14 @@ welcome on this repo.
 | Package | Description |
 |---|---|
 | `Peaceful.Extensions.Hosting` | ASP.NET Core hosting extensions: CORS, exception handling, health checks, Scalar/OpenAPI, and API versioning. |
-| `Peaceful.Extensions.Logging` | Serilog wiring with trace-context enrichment and a static logger factory for bootstrap logging. |
+| `Peaceful.Extensions.Serilog` | Serilog bootstrap logger, ASP.NET Core host wiring, and request-logging composition helpers. |
 | `Peaceful.Extensions.Telemetry` | OpenTelemetry setup for tracing, metrics, and OTLP export. |
 
 ## Install
 
 ```bash
 dotnet add package Peaceful.Extensions.Hosting
-dotnet add package Peaceful.Extensions.Logging
+dotnet add package Peaceful.Extensions.Serilog
 dotnet add package Peaceful.Extensions.Telemetry
 ```
 
