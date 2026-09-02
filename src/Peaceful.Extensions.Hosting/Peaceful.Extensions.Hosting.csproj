@@ -3,6 +3,11 @@
     <Description>Health checks, exception handling, Scalar UI, API versioning, and CORS for Peaceful Studio ASP.NET Core projects.</Description>
     <PackageTags>aspnetcore;hosting;cors;exception-handling;healthchecks;openapi;scalar;api-versioning;problem-details;extensions</PackageTags>
     <IsPackable>true</IsPackable>
+    <!-- Asp.Versioning AV0029/AV0030 assume a single application composition root.
+         This library exposes AddVersioning and AddDefaultOpenApi as independent
+         extension methods that consumers may call separately, so the versioned
+         OpenAPI registration the analyzers demand cannot be assumed here. -->
+    <NoWarn>$(NoWarn);AV0029;AV0030</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" />
@@ -14,5 +19,8 @@
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Peaceful.Extensions.Core\Peaceful.Extensions.Core.csproj" />
   </ItemGroup>
 </Project>

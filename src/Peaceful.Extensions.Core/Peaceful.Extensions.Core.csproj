@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Dependency-free contracts shared by the Peaceful.Extensions packages: health probe paths and tags, and OpenTelemetry configuration options.</Description>
+    <PackageTags>aspnetcore;hosting;health-checks;opentelemetry;configuration;contracts;extensions</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+</Project>

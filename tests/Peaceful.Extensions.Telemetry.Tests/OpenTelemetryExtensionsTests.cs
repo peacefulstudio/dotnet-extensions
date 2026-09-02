@@ -65,6 +65,7 @@ public class OpenTelemetryExtensionsTests
     [Theory]
     [InlineData(-0.01)]
     [InlineData(1.01)]
+    [InlineData(2.0)]
     [InlineData(double.NaN)]
     public void add_telemetry_rejects_out_of_range_sampling_ratio(double ratio)
     {
@@ -76,7 +77,26 @@ public class OpenTelemetryExtensionsTests
             options.TraceSamplingRatio = ratio;
         });
 
-        act.Should().Throw<ArgumentOutOfRangeException>();
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage($"*{nameof(OpenTelemetryOptions)}.{nameof(OpenTelemetryOptions.TraceSamplingRatio)}*")
+            .WithMessage($"*{OpenTelemetryOptions.SectionName}:{nameof(OpenTelemetryOptions.TraceSamplingRatio)}*");
+    }
+
+    [Theory]
+    [InlineData("not a uri")]
+    [InlineData("otel-collector:4317")]
+    public void add_telemetry_rejects_malformed_endpoint_uri(string endpoint)
+    {
+        var builder = WebApplication.CreateBuilder();
+
+        var act = () => builder.AddTelemetry(options =>
+        {
+            options.ServiceName = "test-service";
+            options.Endpoint = endpoint;
+        });
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*OpenTelemetry OTLP endpoint*");
     }
 
     [Fact]
@@ -266,6 +286,28 @@ public class OpenTelemetryExtensionsTests
         // The composed endpoint constant matches the actual key shape.
         OpenTelemetryExtensions.OpenTelemetryEndpointConfigKey
             .Should().Be("OpenTelemetry:Endpoint");
+    }
+
+    [Fact]
+    public void add_telemetry_names_the_configuration_key_when_the_bound_sampling_ratio_is_out_of_range()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{OpenTelemetryOptions.SectionName}:{nameof(OpenTelemetryOptions.ServiceName)}"] = "binding-test",
+                [$"{OpenTelemetryOptions.SectionName}:{nameof(OpenTelemetryOptions.TraceSamplingRatio)}"] = "2.0",
+            })
+            .Build();
+
+        var section = config.GetSection(OpenTelemetryOptions.SectionName);
+        var bind = () => section.Get<OpenTelemetryOptions>();
+        bind.Should().NotThrow();
+
+        var builder = WebApplication.CreateBuilder();
+        var act = () => builder.AddTelemetry(section.Bind);
+
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage($"*{OpenTelemetryOptions.SectionName}:{nameof(OpenTelemetryOptions.TraceSamplingRatio)}*");
     }
 
     [Theory]

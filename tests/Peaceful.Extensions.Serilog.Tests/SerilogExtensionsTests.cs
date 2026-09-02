@@ -243,6 +243,40 @@ public class SerilogExtensionsTests
     }
 
     [Fact]
+    public async Task add_default_serilog_then_configuration_blanks_endpoint_warns()
+    {
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.WebHost.UseTestServer();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "http://collector:4317",
+            });
+            builder.Services.AddSingleton<global::Serilog.Core.ILogEventSink>(new CollectingSink(events));
+
+            builder.AddDefaultSerilog();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = string.Empty,
+            });
+
+            using var app = builder.Build();
+            await app.StartAsync(TestContext.Current.CancellationToken);
+            await app.StopAsync(TestContext.Current.CancellationToken);
+
+            events.Where(IsMissingEndpointWarning).Should().HaveCount(1,
+                "a later configuration source blanking the endpoint leaves the OTLP logs sink unwired at host-build time, so the warning must still fire rather than having been withdrawn at extension-call time.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Fact]
     public async Task add_default_serilog_called_first_without_then_with_endpoint_does_not_warn()
     {
         var previousLogger = Log.Logger;
@@ -265,7 +299,7 @@ public class SerilogExtensionsTests
             await app.StopAsync(TestContext.Current.CancellationToken);
 
             events.Where(IsMissingEndpointWarning).Should().BeEmpty(
-                "a later call resolving the endpoint must unregister the prior MissingEndpointWarning so it can't warn falsely.");
+                "the warning re-reads configuration at startup, so an endpoint resolved by a later call must silence it.");
         }
         finally
         {
@@ -318,8 +352,10 @@ public class SerilogExtensionsTests
             && actualName == expectedName;
     }
 
-    [Fact]
-    public void add_default_serilog_throws_when_endpoint_is_malformed_uri()
+    [Theory]
+    [InlineData("not a uri")]
+    [InlineData("otel-collector:4317")]
+    public void add_default_serilog_throws_when_endpoint_is_malformed_uri(string endpoint)
     {
         // Symmetric with Peaceful.Extensions.Telemetry.OpenTelemetryExtensions:
         // a non-blank but invalid endpoint must fail loudly at startup rather
@@ -333,7 +369,7 @@ public class SerilogExtensionsTests
             var builder = WebApplication.CreateBuilder();
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = "not a uri",
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = endpoint,
             });
 
             builder.AddDefaultSerilog();

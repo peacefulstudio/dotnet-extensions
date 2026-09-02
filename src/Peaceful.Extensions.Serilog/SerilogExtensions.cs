@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Peaceful.Extensions.Core;
 using Peaceful.Extensions.Telemetry;
 using Serilog;
 using Serilog.Events;
@@ -32,20 +33,19 @@ public static partial class SerilogExtensions
     /// <summary>
     /// Configuration key read for the OTLP endpoint used by the Serilog
     /// OpenTelemetry logs sink. Re-exported from
-    /// <see cref="OpenTelemetryExtensions.OpenTelemetryEndpointConfigKey"/>
-    /// so the same nameof-derived value drives traces, metrics, and logs
-    /// from a single source.
+    /// <see cref="OpenTelemetryOptions.EndpointConfigKey"/> so the same
+    /// nameof-derived value drives traces, metrics, and logs from a single
+    /// source.
     /// </summary>
-    public const string OpenTelemetryEndpointConfigKey =
-        OpenTelemetryExtensions.OpenTelemetryEndpointConfigKey;
+    public const string OpenTelemetryEndpointConfigKey = OpenTelemetryOptions.EndpointConfigKey;
 
     /// <summary>
     /// <see cref="EventId.Name"/> of the log entry emitted at startup when no
     /// OTLP endpoint is configured. Stable across releases — operators can
     /// filter on this name in their log pipeline. Symmetric with
-    /// <see cref="OpenTelemetryExtensions.MissingEndpointWarningEventName"/>
-    /// from the Telemetry package, but distinct so the two signals can be
-    /// triaged independently when only one of telemetry/logs is wired.
+    /// <c>OpenTelemetryExtensions.MissingEndpointWarningEventName</c> from the
+    /// Telemetry package, but distinct so the two signals can be triaged
+    /// independently when only one of telemetry/logs is wired.
     /// </summary>
     public const string MissingEndpointWarningEventName = "OpenTelemetryLogsEndpointMissing";
 
@@ -56,7 +56,7 @@ public static partial class SerilogExtensions
     /// so the defaults can't be mutated through a downcast.
     /// </summary>
     public static readonly IReadOnlyList<string> DefaultQuietProbePathPrefixes =
-        Array.AsReadOnly(new[] { "/health/live", "/health/ready" });
+        Array.AsReadOnly(new[] { HealthEndpoints.Live, HealthEndpoints.Ready });
 
     /// <summary>
     /// Creates a Serilog bootstrap logger that writes compact JSON
@@ -108,7 +108,8 @@ public static partial class SerilogExtensions
     /// <exception cref="InvalidOperationException">
     /// Thrown at host build time (from the <c>UseSerilog</c> configure
     /// callback) when the configured endpoint is non-blank but not a valid
-    /// absolute URI — symmetric with the validation performed by
+    /// absolute URI, or carries a scheme other than <c>http</c> or
+    /// <c>https</c> — symmetric with the validation performed by
     /// <c>Peaceful.Extensions.Telemetry.OpenTelemetryExtensions</c>.
     /// </exception>
     public static WebApplicationBuilder AddDefaultSerilog(this WebApplicationBuilder builder)
@@ -137,6 +138,14 @@ public static partial class SerilogExtensions
                     "(e.g., 'http://otel-collector:4317').");
             }
 
+            if (otlpUri.Scheme != Uri.UriSchemeHttp && otlpUri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new InvalidOperationException(
+                    $"Invalid OpenTelemetry OTLP endpoint URI scheme '{otlpUri.Scheme}' in '{otlpEndpoint}'. " +
+                    $"Set '{OpenTelemetryEndpointConfigKey}' to an http or https absolute URI " +
+                    "(e.g., 'http://otel-collector:4317').");
+            }
+
             configuration.WriteTo.OpenTelemetry(otlp =>
             {
                 otlp.Endpoint = otlpUri.ToString();
@@ -147,31 +156,10 @@ public static partial class SerilogExtensions
                 otlpUri);
         });
 
-        var configuredEndpoint = builder.Configuration[OpenTelemetryEndpointConfigKey];
-        if (string.IsNullOrWhiteSpace(configuredEndpoint))
-        {
-            builder.Services.TryAddEnumerable(
-                ServiceDescriptor.Singleton<IHostedService, MissingEndpointWarning>());
-        }
-        else
-        {
-            UnregisterMissingEndpointWarning(builder.Services);
-        }
+        builder.Services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IHostedService, MissingEndpointWarning>());
 
         return builder;
-    }
-
-    private static void UnregisterMissingEndpointWarning(IServiceCollection services)
-    {
-        for (var i = services.Count - 1; i >= 0; i--)
-        {
-            var descriptor = services[i];
-            if (descriptor.ServiceType == typeof(IHostedService) &&
-                descriptor.ImplementationType == typeof(MissingEndpointWarning))
-            {
-                services.RemoveAt(i);
-            }
-        }
     }
 
     /// <summary>
@@ -179,14 +167,15 @@ public static partial class SerilogExtensions
     /// configured. Uses <see cref="ILogger{TCategoryName}"/> from DI rather
     /// than <see cref="Log"/> so the warning rides the configured Serilog
     /// pipeline and is visible without a prior call to
-    /// <see cref="CreateBootstrapLogger"/>. Re-reads
-    /// <see cref="IConfiguration"/> at <see cref="StartAsync"/> rather than
-    /// trusting the registration-time decision so the warning stays in
-    /// lock-step with the actual sink-wiring decision made by
-    /// <c>UseSerilog</c> at host-build time — registration runs against the
-    /// extension-call-time configuration snapshot, but extra configuration
-    /// sources can land between then and <c>Build()</c>, and a false warning
-    /// while OTLP is in fact wired would be the worst kind of alert noise.
+    /// <see cref="CreateBootstrapLogger"/>. Registration is unconditional:
+    /// <see cref="AddDefaultSerilog"/> only ever sees the configuration
+    /// snapshot as it stands at call time, while <c>UseSerilog</c> decides
+    /// whether to wire the OTLP sink from the configuration as it stands at
+    /// <c>Build()</c>, and sources can land between the two in either
+    /// direction. <see cref="StartAsync"/> re-reads <see cref="IConfiguration"/>
+    /// and is therefore the single point where the warning is decided, in
+    /// lock-step with the sink-wiring decision — neither a silent skip nor a
+    /// false warning while OTLP is in fact wired is possible.
     /// </summary>
     internal sealed partial class MissingEndpointWarning(
         IConfiguration configuration,

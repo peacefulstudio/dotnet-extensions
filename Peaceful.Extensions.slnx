@@ -1,10 +1,12 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Peaceful.Extensions.Core/Peaceful.Extensions.Core.csproj" />
     <Project Path="src/Peaceful.Extensions.Hosting/Peaceful.Extensions.Hosting.csproj" />
     <Project Path="src/Peaceful.Extensions.Serilog/Peaceful.Extensions.Serilog.csproj" />
     <Project Path="src/Peaceful.Extensions.Telemetry/Peaceful.Extensions.Telemetry.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Peaceful.Extensions.Core.Tests/Peaceful.Extensions.Core.Tests.csproj" />
     <Project Path="tests/Peaceful.Extensions.Hosting.Tests/Peaceful.Extensions.Hosting.Tests.csproj" />
     <Project Path="tests/Peaceful.Extensions.Serilog.Tests/Peaceful.Extensions.Serilog.Tests.csproj" />
     <Project Path="tests/Peaceful.Extensions.Telemetry.Tests/Peaceful.Extensions.Telemetry.Tests.csproj" />
