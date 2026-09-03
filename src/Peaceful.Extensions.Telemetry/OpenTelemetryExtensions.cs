@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Peaceful.Extensions.Core;
 
 namespace Peaceful.Extensions.Telemetry;
 
@@ -20,13 +21,14 @@ namespace Peaceful.Extensions.Telemetry;
 public static partial class OpenTelemetryExtensions
 {
     /// <summary>
-    /// Configuration key read for the OTLP endpoint URI. Composed at compile
-    /// time from the pinned <see cref="OpenTelemetryOptions.SectionName"/> +
-    /// <c>nameof(<see cref="OpenTelemetryOptions.Endpoint"/>)</c>, so the
-    /// constant always reflects whatever the options class actually exposes.
+    /// Configuration key read for the OTLP endpoint URI. Re-exported from
+    /// <see cref="OpenTelemetryOptions.EndpointConfigKey"/> so traces, metrics
+    /// and logs resolve the same key from a single source.
     /// </summary>
-    public const string OpenTelemetryEndpointConfigKey =
-        $"{OpenTelemetryOptions.SectionName}:{nameof(OpenTelemetryOptions.Endpoint)}";
+    public const string OpenTelemetryEndpointConfigKey = OpenTelemetryOptions.EndpointConfigKey;
+
+    private const string TraceSamplingRatioConfigKey =
+        $"{OpenTelemetryOptions.SectionName}:{nameof(OpenTelemetryOptions.TraceSamplingRatio)}";
 
     /// <summary>
     /// <see cref="EventId.Name"/> of the log entry emitted at startup when no
@@ -57,7 +59,13 @@ public static partial class OpenTelemetryExtensions
     /// <exception cref="ArgumentException">
     /// Thrown when the resolved <see cref="OpenTelemetryOptions.ServiceName"/> is
     /// null, empty or whitespace, or when a configured OTLP endpoint is not a
-    /// valid absolute URI.
+    /// valid absolute URI with an <c>http</c> or <c>https</c> scheme.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when the resolved <see cref="OpenTelemetryOptions.TraceSamplingRatio"/>
+    /// is <see cref="double.NaN"/> or falls outside the closed interval [0.0, 1.0].
+    /// The message names both the property and the
+    /// <c>OpenTelemetry:TraceSamplingRatio</c> configuration key.
     /// </exception>
     public static WebApplicationBuilder AddTelemetry(
         this WebApplicationBuilder builder,
@@ -70,20 +78,35 @@ public static partial class OpenTelemetryExtensions
 
         ArgumentException.ThrowIfNullOrWhiteSpace(options.ServiceName);
 
-        // Note: TraceSamplingRatio range/NaN validation is enforced by
-        // OpenTelemetryOptions.TraceSamplingRatio's setter, so an invalid
-        // value cannot reach this point.
+        var samplingRatio = options.TraceSamplingRatio;
+        if (double.IsNaN(samplingRatio) || samplingRatio < 0.0 || samplingRatio > 1.0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(configure),
+                samplingRatio,
+                $"{nameof(OpenTelemetryOptions)}.{nameof(OpenTelemetryOptions.TraceSamplingRatio)} must be a finite value in the closed interval [0.0, 1.0]. " +
+                $"Set it via the options action or the '{TraceSamplingRatioConfigKey}' configuration key.");
+        }
 
         var otlpEndpoint = options.Endpoint
             ?? builder.Configuration[OpenTelemetryEndpointConfigKey];
 
         Uri? otlpUri = null;
-        if (!string.IsNullOrWhiteSpace(otlpEndpoint) &&
-            !Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out otlpUri))
+        if (!string.IsNullOrWhiteSpace(otlpEndpoint))
         {
-            throw new ArgumentException(
-                $"Invalid OpenTelemetry OTLP endpoint URI: '{otlpEndpoint}'. " +
-                $"Provide a valid absolute URI via {nameof(OpenTelemetryOptions)}.{nameof(OpenTelemetryOptions.Endpoint)} or the '{OpenTelemetryEndpointConfigKey}' configuration key.");
+            if (!Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out otlpUri))
+            {
+                throw new ArgumentException(
+                    $"Invalid OpenTelemetry OTLP endpoint URI: '{otlpEndpoint}'. " +
+                    $"Provide a valid absolute URI via {nameof(OpenTelemetryOptions)}.{nameof(OpenTelemetryOptions.Endpoint)} or the '{OpenTelemetryEndpointConfigKey}' configuration key.");
+            }
+
+            if (otlpUri.Scheme != Uri.UriSchemeHttp && otlpUri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new ArgumentException(
+                    $"Invalid OpenTelemetry OTLP endpoint URI scheme '{otlpUri.Scheme}' in '{otlpEndpoint}'. " +
+                    $"Provide an http or https absolute URI via {nameof(OpenTelemetryOptions)}.{nameof(OpenTelemetryOptions.Endpoint)} or the '{OpenTelemetryEndpointConfigKey}' configuration key.");
+            }
         }
 
         // Head sampler: ParentBased so a server that receives a sampled
@@ -94,7 +117,7 @@ public static partial class OpenTelemetryExtensions
         // and instrumentation filters (e.g. the /health filter below) still
         // apply first.
         var sampler = new ParentBasedSampler(
-            new TraceIdRatioBasedSampler(options.TraceSamplingRatio));
+            new TraceIdRatioBasedSampler(samplingRatio));
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
@@ -110,7 +133,7 @@ public static partial class OpenTelemetryExtensions
                     {
                         o.RecordException = true;
                         o.Filter = httpContext =>
-                            !httpContext.Request.Path.StartsWithSegments("/health");
+                            !httpContext.Request.Path.StartsWithSegments(HealthEndpoints.Aggregate);
                     })
                     .AddHttpClientInstrumentation()
                     .AddSource(options.ServiceName);
@@ -139,23 +162,20 @@ public static partial class OpenTelemetryExtensions
         }
         else
         {
-            UnregisterMissingEndpointWarning(builder.Services);
+            RemoveMissingEndpointWarning(builder.Services);
         }
 
         return builder;
     }
 
-    private static void UnregisterMissingEndpointWarning(IServiceCollection services)
+    private static void RemoveMissingEndpointWarning(IServiceCollection services)
     {
-        for (var i = services.Count - 1; i >= 0; i--)
-        {
-            var descriptor = services[i];
-            if (descriptor.ServiceType == typeof(IHostedService) &&
-                descriptor.ImplementationType == typeof(MissingEndpointWarning))
-            {
-                services.RemoveAt(i);
-            }
-        }
+        var registration = services.FirstOrDefault(descriptor =>
+            descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationType == typeof(MissingEndpointWarning));
+
+        if (registration is not null)
+            services.Remove(registration);
     }
 
     /// <summary>

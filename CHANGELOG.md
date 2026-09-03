@@ -20,6 +20,81 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ### Security
 
+## [0.3.1-preview.1] - 2026-09-02
+
+### Added
+- `Peaceful.Extensions.Core` package: the contracts the other packages share,
+  with no package dependencies of its own — `HealthEndpoints` (the `/health`,
+  `/health/ready` and `/health/live` probe paths), `HealthCheckTags.Ready`
+  (the tag that selects a check into the readiness probe), and
+  `OpenTelemetryOptions`. (#170)
+- `OpenTelemetryOptions.EndpointConfigKey` composes the `OpenTelemetry:Endpoint`
+  configuration key from the section name and the property name, so every
+  package resolving that key reads it from one place. (#170)
+
+### Changed
+- **Breaking:** `Peaceful.Extensions.Serilog` no longer depends on
+  `Peaceful.Extensions.Telemetry`, and so no longer pulls the OpenTelemetry
+  exporter and instrumentation packages into consumers that only want logging.
+  It depends on `Peaceful.Extensions.Core` instead. Consumers that referenced
+  only `Peaceful.Extensions.Serilog` and called `builder.AddTelemetry(...)`
+  through the transitive reference now fail to compile with CS0246 / CS1061;
+  add an explicit `Peaceful.Extensions.Telemetry` `PackageReference`. (#170)
+- `Peaceful.Extensions.Hosting` and `Peaceful.Extensions.Telemetry` now take a
+  `Peaceful.Extensions.Core` package dependency, so every consumer of those two
+  picks up one new transitive package on upgrade. (#170)
+- **Breaking:** `OpenTelemetryOptions` now ships in `Peaceful.Extensions.Core`
+  while keeping its `Peaceful.Extensions.Telemetry` namespace;
+  `Peaceful.Extensions.Telemetry` type-forwards it, so already-compiled
+  consumers keep working. A recompile against a mixed set of package versions
+  does not: the published `Peaceful.Extensions.Telemetry` 0.3.0-preview.1
+  defines the same full type name, so upgrading `Peaceful.Extensions.Serilog`
+  or `Peaceful.Extensions.Hosting` (which pull the new Core) while pinning the
+  old Telemetry fails with `CS0433: The type 'OpenTelemetryOptions' exists in
+  both 'Peaceful.Extensions.Core' and 'Peaceful.Extensions.Telemetry'`. NuGet
+  cannot express the constraint, so upgrade all `Peaceful.Extensions.*`
+  packages together at this version. (#170)
+- `OpenTelemetryOptions.TraceSamplingRatio` no longer throws from its property
+  setter. An out-of-range value is rejected when `AddTelemetry` runs rather
+  than at assignment, so code that relied on catching
+  `ArgumentOutOfRangeException` around the assignment now sees the failure
+  later, at host build. (#170)
+
+### Deprecated
+
+### Removed
+
+### Fixed
+- `Peaceful.Extensions.Serilog` no longer stops exporting logs silently when a
+  later configuration source blanks the OTLP endpoint. The missing-endpoint
+  startup warning was registered from the configuration snapshot taken at
+  `AddDefaultSerilog` call time and withdrawn whenever an endpoint was present
+  then, so a source added afterwards that blanked it left neither an OTLP logs
+  sink nor a warning. The warning is now registered unconditionally and decides
+  at startup. (#170)
+- `Peaceful.Extensions.Serilog` and `Peaceful.Extensions.Telemetry` now reject
+  an OTLP endpoint whose scheme is neither `http` nor `https`. Both validated
+  with `Uri.TryCreate(..., UriKind.Absolute)`, which accepts
+  `otel-collector:4317` as a valid absolute URI with scheme `otel-collector` —
+  a dropped `http://`, the most common misconfiguration, passed validation and
+  reached the exporter, failing later and out of band. (#170)
+- `OpenTelemetryOptions.TraceSamplingRatio` now reports an out-of-range value
+  against the configuration key that set it. The range was enforced in a
+  throwing property setter, so on the configuration-binding path its own docs
+  recommend, a value such as `"TraceSamplingRatio": 2.0` surfaced as a
+  `TargetInvocationException` from the binder's reflective call into that
+  setter — "Exception has been thrown by the target of an invocation." over a
+  stack of reflection internals, with the `ArgumentOutOfRangeException` buried
+  as an inner exception, so the message an operator actually saw named neither
+  the property nor the key they got wrong. The range is now validated in
+  `AddTelemetry` alongside `ServiceName` and `Endpoint`, with a message naming
+  both the property and the `OpenTelemetry:TraceSamplingRatio` configuration
+  key. The property carries `[Range(0.0, 1.0)]`, so consumers who opt into
+  `.ValidateDataAnnotations()` on their own options registration get validation
+  there too. (#170)
+
+### Security
+
 ## [0.3.0-preview.1] - 2026-07-17
 
 ### Added
@@ -271,7 +346,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.0-preview.1...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.1-preview.1...HEAD
+[0.3.1-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.0-preview.1...v0.3.1-preview.1
 [0.3.0-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.2-preview.1...v0.3.0-preview.1
 [0.2.2-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.3...v0.2.2-preview.1
 [0.2.1-preview.3]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.1...v0.2.1-preview.3

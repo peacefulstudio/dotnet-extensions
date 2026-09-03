@@ -4,6 +4,7 @@
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Peaceful.Extensions.Core;
 
 namespace Peaceful.Extensions.Hosting;
 
@@ -15,29 +16,31 @@ namespace Peaceful.Extensions.Hosting;
 public static class HealthCheckExtensions
 {
     /// <summary>
-    /// Maps three anonymous health-check endpoints: <c>/health</c> runs every
-    /// registered check, <c>/health/ready</c> runs only checks tagged
-    /// <c>ready</c>, and <c>/health/live</c> runs no checks so it succeeds as
-    /// long as the host is responsive. The <c>/health</c> and
-    /// <c>/health/ready</c> responses are written in the HealthChecks UI JSON
-    /// format.
+    /// Maps three anonymous health-check endpoints:
+    /// <see cref="HealthEndpoints.Aggregate"/> runs every registered check,
+    /// <see cref="HealthEndpoints.Ready"/> runs only checks tagged
+    /// <see cref="HealthCheckTags.Ready"/>, and
+    /// <see cref="HealthEndpoints.Live"/> runs no checks so it succeeds as long
+    /// as the host is responsive. The <see cref="HealthEndpoints.Aggregate"/>
+    /// and <see cref="HealthEndpoints.Ready"/> responses are written in the
+    /// HealthChecks UI JSON format.
     /// </summary>
     /// <param name="app">The application whose endpoints are being configured.</param>
     /// <returns>The same <paramref name="app"/> instance, to allow chaining.</returns>
     public static WebApplication MapDefaultHealthChecks(this WebApplication app)
     {
-        app.MapHealthChecks("/health", new HealthCheckOptions
+        app.MapHealthChecks(HealthEndpoints.Aggregate, new HealthCheckOptions
         {
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         }).AllowAnonymous();
 
-        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        app.MapHealthChecks(HealthEndpoints.Ready, new HealthCheckOptions
         {
-            Predicate = check => check.Tags.Contains("ready"),
+            Predicate = check => check.Tags.Contains(HealthCheckTags.Ready),
             ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
         }).AllowAnonymous();
 
-        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        app.MapHealthChecks(HealthEndpoints.Live, new HealthCheckOptions
         {
             Predicate = _ => false
         }).AllowAnonymous();

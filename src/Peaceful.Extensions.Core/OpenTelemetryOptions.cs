@@ -1,10 +1,14 @@
 // Copyright (c) 2026 Peaceful Studio OÜ
 // SPDX-License-Identifier: Apache-2.0
 
+using System.ComponentModel.DataAnnotations;
+
 namespace Peaceful.Extensions.Telemetry;
 
 /// <summary>
-/// Configures <c>AddTelemetry</c>. C# property names match config
+/// Configuration contract for Peaceful's OpenTelemetry wiring: traces and
+/// metrics in <c>Peaceful.Extensions.Telemetry</c>, logs in
+/// <c>Peaceful.Extensions.Serilog</c>. C# property names match config
 /// keys 1:1 (no attribute mapping), and the section name is pinned via
 /// <see cref="SectionName"/> — so the public config contract is composable
 /// from <c>nameof</c> against this class:
@@ -19,6 +23,15 @@ namespace Peaceful.Extensions.Telemetry;
 /// convention (<c>OTEL_*</c> env vars, <c>OtlpExporterOptions.Endpoint</c>)
 /// so operators have a single mental model across the fleet.
 /// </summary>
+/// <remarks>
+/// This type ships in the <c>Peaceful.Extensions.Core</c> assembly but keeps
+/// the <c>Peaceful.Extensions.Telemetry</c> namespace it was published under,
+/// so consumers compiled against the earlier layout keep resolving it without
+/// a <c>using</c> change; the <c>TypeForwardedTo</c> in
+/// <c>Peaceful.Extensions.Telemetry/AssemblyInfo.cs</c> keeps already-compiled
+/// binaries resolving it too and must stay for as long as that compatibility
+/// is promised.
+/// </remarks>
 public sealed class OpenTelemetryOptions
 {
     /// <summary>
@@ -28,6 +41,16 @@ public sealed class OpenTelemetryOptions
     /// class is renamed.
     /// </summary>
     public const string SectionName = "OpenTelemetry";
+
+    /// <summary>
+    /// Configuration key read for the OTLP endpoint URI. Composed at compile
+    /// time from <see cref="SectionName"/> + <c>nameof(<see cref="Endpoint"/>)</c>,
+    /// so the constant always reflects whatever this class actually exposes.
+    /// Shared by every package that honours the same endpoint — traces and
+    /// metrics in <c>Peaceful.Extensions.Telemetry</c>, logs in
+    /// <c>Peaceful.Extensions.Serilog</c>.
+    /// </summary>
+    public const string EndpointConfigKey = $"{SectionName}:{nameof(Endpoint)}";
 
     /// <summary>
     /// Logical service name reported as the <c>service.name</c> resource
@@ -52,10 +75,12 @@ public sealed class OpenTelemetryOptions
 
     /// <summary>
     /// OTLP collector endpoint URI (e.g. <c>http://otel-collector:4317</c>).
-    /// When set—or when resolved from the <c>OpenTelemetry:Endpoint</c>
-    /// configuration key—an OTLP exporter is added for both traces and metrics;
-    /// otherwise no exporter is registered and a startup warning is logged. Must
-    /// be a valid absolute URI or <c>AddTelemetry</c> throws.
+    /// When set—or when resolved from the <see cref="EndpointConfigKey"/>
+    /// configuration key—an OTLP exporter is added for traces and metrics by
+    /// <c>AddTelemetry</c>, and the same key drives the OTLP logs sink wired by
+    /// <c>AddDefaultSerilog</c>; otherwise no exporter or sink is registered and
+    /// a startup warning is logged. Must be an absolute URI with an <c>http</c>
+    /// or <c>https</c> scheme or the wiring throws.
     /// </summary>
     public string? Endpoint { get; set; }
 
@@ -66,8 +91,6 @@ public sealed class OpenTelemetryOptions
     /// </summary>
     public string? ServiceInstanceId { get; set; }
 
-    private double _traceSamplingRatio = 1.0;
-
     /// <summary>
     /// Head-based trace sampling ratio applied to the configured tracer via
     /// <c>ParentBasedSampler(TraceIdRatioBasedSampler(ratio))</c>. A value of
@@ -75,33 +98,20 @@ public sealed class OpenTelemetryOptions
     /// <c>0.1</c> keeps roughly 10%; <c>0.0</c> drops every locally-started
     /// root span. Child spans honour their parent's sampling decision, so a
     /// server that receives an already-sampled trace will always continue
-    /// recording it.
+    /// recording it. Must be a non-<see cref="double.NaN"/> value in the closed
+    /// interval [0.0, 1.0] or <c>AddTelemetry</c> throws.
     /// </summary>
     /// <remarks>
     /// Kept at <c>1.0</c> by default so upgrading this package never silently
     /// reduces trace fidelity for consumers. Services typically lower it in
     /// higher-traffic environments (e.g. <c>0.1</c> in <c>prod</c>, <c>1.0</c>
     /// in <c>dev</c>/<c>stage</c>) via standard .NET configuration binding or
-    /// by mutating the options action.
+    /// by mutating the options action. The range is enforced by
+    /// <c>AddTelemetry</c>, whose message names the configuration key that set
+    /// the value. The <see cref="RangeAttribute"/> records the same range for
+    /// consumers who register this type through the options pattern and opt
+    /// into <c>ValidateDataAnnotations</c>; binding alone does not check it.
     /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown by the setter when assigned a value outside the closed interval
-    /// [0.0, 1.0] or <see cref="double.NaN"/>. Enforcing at the setter means
-    /// an invalid options instance can never be observed by downstream code.
-    /// </exception>
-    public double TraceSamplingRatio
-    {
-        get => _traceSamplingRatio;
-        set
-        {
-            if (double.IsNaN(value) || value < 0.0 || value > 1.0)
-            {
-                throw new ArgumentOutOfRangeException(
-                    nameof(value),
-                    value,
-                    $"{nameof(TraceSamplingRatio)} must be a finite value in the closed interval [0.0, 1.0].");
-            }
-            _traceSamplingRatio = value;
-        }
-    }
+    [Range(0.0, 1.0)]
+    public double TraceSamplingRatio { get; set; } = 1.0;
 }
