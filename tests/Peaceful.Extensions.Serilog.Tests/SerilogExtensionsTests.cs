@@ -354,15 +354,41 @@ public class SerilogExtensionsTests
 
     [Theory]
     [InlineData("not a uri")]
-    [InlineData("otel-collector:4317")]
-    public void add_default_serilog_throws_when_endpoint_is_malformed_uri(string endpoint)
+    [InlineData("relative/path")]
+    public void add_default_serilog_throws_when_the_endpoint_is_not_an_absolute_uri(string endpoint)
     {
-        // Symmetric with Peaceful.Extensions.Telemetry.OpenTelemetryExtensions:
-        // a non-blank but invalid endpoint must fail loudly at startup rather
-        // than be passed to the OTLP sink to fail asynchronously inside its
-        // background batcher (where the operator would never see it). The
-        // Serilog configure callback runs during host build, so the throw
-        // surfaces at WebApplicationBuilder.Build().
+        var previousLogger = Log.Logger;
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [SerilogExtensions.OpenTelemetryEndpointConfigKey] = endpoint,
+            });
+
+            builder.AddDefaultSerilog();
+
+            var act = () => builder.Build();
+
+            act.Should().Throw<InvalidOperationException>(
+                    "a non-blank but invalid endpoint must fail at host build rather than asynchronously inside the OTLP sink's background batcher, where an operator would never see it.")
+                .WithMessage($"*Invalid OpenTelemetry OTLP endpoint URI: '{endpoint}'*",
+                    "the not-an-absolute-URI arm must be the one that fires, and it must quote the endpoint it rejected.")
+                .WithMessage($"*Set '{SerilogExtensions.OpenTelemetryEndpointConfigKey}' to a valid absolute URI*",
+                    "the remedy wording is what tells the two rejection arms apart; the bad-scheme arm says 'to an http or https absolute URI' instead.");
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
+    }
+
+    [Theory]
+    [InlineData("otel-collector:4317", "otel-collector")]
+    [InlineData("ftp://collector:4317", "ftp")]
+    [InlineData("file:///relative/path", "file")]
+    public void add_default_serilog_throws_when_the_absolute_endpoint_scheme_is_not_http(string endpoint, string scheme)
+    {
         var previousLogger = Log.Logger;
         try
         {
@@ -377,7 +403,10 @@ public class SerilogExtensionsTests
             var act = () => builder.Build();
 
             act.Should().Throw<InvalidOperationException>()
-                .WithMessage("*OpenTelemetry OTLP endpoint*");
+                .WithMessage($"*Invalid OpenTelemetry OTLP endpoint URI scheme '{scheme}' in '{endpoint}'*",
+                    "the bad-scheme arm must be the one that fires, and it must name the scheme parsed from this very endpoint.")
+                .WithMessage($"*Set '{SerilogExtensions.OpenTelemetryEndpointConfigKey}' to an http or https absolute URI*",
+                    "the remedy wording is what tells the two rejection arms apart; the not-an-absolute-URI arm says 'to a valid absolute URI' instead.");
         }
         finally
         {

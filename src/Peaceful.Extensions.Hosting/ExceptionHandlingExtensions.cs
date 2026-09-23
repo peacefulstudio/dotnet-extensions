@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
@@ -18,6 +19,10 @@ namespace Peaceful.Extensions.Hosting;
 /// </summary>
 public static partial class ExceptionHandlingExtensions
 {
+    // Isolated from ConfigureHttpJsonOptions so that consumer naming policies
+    // (e.g. snake_case) cannot rename the documented problem-details fields.
+    private static readonly JsonSerializerOptions _problemJsonOptions = new();
+
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception on {Method} {Path}")]
     private static partial void LogUnhandledException(ILogger logger, Exception? exception, string method, string? path);
 
@@ -48,17 +53,20 @@ public static partial class ExceptionHandlingExtensions
                         .CreateLogger("Peaceful.Extensions.Hosting.ExceptionHandler");
                     LogUnhandledException(logger, exception, context.Request.Method, context.Request.Path);
 
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                    context.Response.ContentType = "application/problem+json";
-                    var body = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new
-                    {
-                        status = 500,
-                        title = "An unexpected error occurred",
-                        type = "https://httpstatuses.com/500",
-                        traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier,
-                        instance = context.Request.Path.Value
-                    });
-                    await context.Response.Body.WriteAsync(body);
+                    const int statusCode = StatusCodes.Status500InternalServerError;
+                    context.Response.StatusCode = statusCode;
+                    await context.Response.WriteAsJsonAsync(
+                        new
+                        {
+                            status = statusCode,
+                            title = "An unexpected error occurred",
+                            type = $"https://httpstatuses.com/{statusCode}",
+                            traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier,
+                            instance = context.Request.Path.Value
+                        },
+                        options: _problemJsonOptions,
+                        contentType: "application/problem+json",
+                        cancellationToken: context.RequestAborted);
                 });
             });
             app.UseHsts();
