@@ -20,6 +20,27 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ### Security
 
+## [0.3.2] - 2026-09-22
+
+### Changed
+- The 500 problem-details response now writes via `HttpResponse.WriteAsJsonAsync`
+  with its own fixed `JsonSerializerOptions`, instead of a manual serialization
+  call. Field names (`traceId`, etc.) stay stable even when a host configures
+  `ConfigureHttpJsonOptions` with a different naming policy, and a client
+  disconnect while the body is being written now surfaces as a cancellation
+  instead of always completing the write.
+- `Scalar.AspNetCore` 2.17.2 → 2.17.8
+- `Microsoft.AspNetCore.OpenApi` 10.0.11 → 10.0.12
+- `OpenTelemetry.Extensions.Hosting` 1.18.0 → 1.19.1
+- `OpenTelemetry.Instrumentation.AspNetCore` 1.18.0 → 1.19.0
+- `OpenTelemetry.Instrumentation.Http` 1.18.0 → 1.19.0
+- `OpenTelemetry.Instrumentation.GrpcNetClient` 1.16.0-beta.1 → 1.19.1-beta.1
+- `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.18.0 → 1.19.1
+- `xunit.v3` 4.0.0 → 4.0.1
+- `Microsoft.Testing.Extensions.CodeCoverage` 18.10.0 → 18.11.2
+- `Microsoft.AspNetCore.TestHost` 10.0.11 → 10.0.12
+- `Microsoft.SourceLink.GitHub` 10.0.400 → 10.0.401
+
 ## [0.3.1-preview.1] - 2026-09-02
 
 ### Added
@@ -346,7 +367,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.1-preview.1...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.1-preview.1...v0.3.2
 [0.3.1-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.0-preview.1...v0.3.1-preview.1
 [0.3.0-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.2-preview.1...v0.3.0-preview.1
 [0.2.2-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.1-preview.3...v0.2.2-preview.1

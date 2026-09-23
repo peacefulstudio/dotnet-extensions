@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Peaceful.Extensions.Hosting.Tests;
 
@@ -56,11 +57,33 @@ public class ExceptionHandlingExtensionsTests
         content.Should().Contain("InvalidOperationException");
     }
 
-    private static async Task<WebApplication> CreateAppAsync(string environment)
+    [Fact]
+    public async Task exception_handler_preserves_camel_case_field_names_when_host_configures_snake_case_json()
+    {
+        await using var app = await CreateAppAsync("Production", configureJson: options =>
+        {
+            options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+        });
+        var client = app.GetTestClient();
+
+        var response = await client.GetAsync("/throw", TestContext.Current.CancellationToken);
+        var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        root.TryGetProperty("traceId", out _).Should().BeTrue("the problem-details contract must not be remapped by consumer naming policies");
+        root.TryGetProperty("trace_id", out _).Should().BeFalse("snake_case remapping of a documented field is a breaking change");
+    }
+
+    private static async Task<WebApplication> CreateAppAsync(
+        string environment,
+        Action<Microsoft.AspNetCore.Http.Json.JsonOptions>? configureJson = null)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
         builder.Environment.EnvironmentName = environment;
+        if (configureJson is not null)
+            builder.Services.ConfigureHttpJsonOptions(configureJson);
 
         var app = builder.Build();
         app.UseExceptionHandling();

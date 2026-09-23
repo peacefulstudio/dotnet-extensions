@@ -84,8 +84,8 @@ public class OpenTelemetryExtensionsTests
 
     [Theory]
     [InlineData("not a uri")]
-    [InlineData("otel-collector:4317")]
-    public void add_telemetry_rejects_malformed_endpoint_uri(string endpoint)
+    [InlineData("relative/path")]
+    public void add_telemetry_rejects_an_endpoint_that_is_not_an_absolute_uri(string endpoint)
     {
         var builder = WebApplication.CreateBuilder();
 
@@ -96,7 +96,61 @@ public class OpenTelemetryExtensionsTests
         });
 
         act.Should().Throw<ArgumentException>()
-            .WithMessage("*OpenTelemetry OTLP endpoint*");
+            .WithMessage($"*Invalid OpenTelemetry OTLP endpoint URI: '{endpoint}'*",
+                "the not-an-absolute-URI arm must be the one that fires, and it must quote the endpoint it rejected.")
+            .WithMessage("*Provide a valid absolute URI*",
+                "the remedy wording is what tells the two rejection arms apart; the bad-scheme arm says 'an http or https absolute URI' instead.");
+    }
+
+    [Theory]
+    [InlineData("otel-collector:4317", "otel-collector")]
+    [InlineData("ftp://collector:4317", "ftp")]
+    [InlineData("file:///relative/path", "file")]
+    public void add_telemetry_rejects_an_absolute_endpoint_whose_scheme_is_not_http(string endpoint, string scheme)
+    {
+        var builder = WebApplication.CreateBuilder();
+
+        var act = () => builder.AddTelemetry(options =>
+        {
+            options.ServiceName = "test-service";
+            options.Endpoint = endpoint;
+        });
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage($"*Invalid OpenTelemetry OTLP endpoint URI scheme '{scheme}' in '{endpoint}'*",
+                "the bad-scheme arm must be the one that fires, and it must name the scheme parsed from this very endpoint.")
+            .WithMessage("*Provide an http or https absolute URI*",
+                "the remedy wording is what tells the two rejection arms apart; the not-an-absolute-URI arm says 'a valid absolute URI' instead.");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData("\t")]
+    public async Task add_telemetry_treats_a_blank_endpoint_as_an_absent_one(string endpoint)
+    {
+        var capture = new CapturingLoggerProvider();
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(capture);
+        builder.Logging.SetMinimumLevel(LogLevel.Trace);
+
+        var act = () => builder.AddTelemetry(options =>
+        {
+            options.ServiceName = "blank-endpoint-service";
+            options.Endpoint = endpoint;
+        });
+
+        act.Should().NotThrow(
+            "a blank endpoint means 'unset', not 'malformed' — rejecting it would break hosts that bind the key to an empty environment variable.");
+
+        using var app = builder.Build();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        await app.StopAsync(TestContext.Current.CancellationToken);
+
+        capture.MissingEndpointWarnings().Should().HaveCount(1,
+            "a blank endpoint leaves the OTLP exporter unwired, so it must warn exactly as an absent one does.");
     }
 
     [Fact]
