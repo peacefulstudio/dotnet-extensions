@@ -50,7 +50,7 @@ instead of opening a public issue.
 ## Project stewardship
 
 `dotnet-extensions` is currently developed and maintained by **Peaceful
-Studio OÜ** (Estonia, VAT EE102232996). The project is licensed under
+Studio OÜ** (Estonia). The project is licensed under
 Apache-2.0 with the explicit intent of community ownership: if and when
 adoption warrants neutral governance, Peaceful Studio commits to
 transferring this repository to a community-led organisation under the
