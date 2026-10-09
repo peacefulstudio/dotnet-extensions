@@ -1,0 +1,196 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (no leading v, e.g. 0.3.3). Every job runs from the existing tag v<version>.'
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.r.outputs.version }}
+      tag: ${{ steps.r.outputs.tag }}
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ inputs.version && format('v{0}', inputs.version) || github.ref }}
+      - name: Resolve the version
+        id: r
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -n "${VERSION_INPUT:-}" ]; then
+            VERSION="${VERSION_INPUT}"
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            echo "::error::no version input and not a tag"; exit 1
+          fi
+          PROPS_VERSION="$(.github/scripts/check-release-version.sh)"
+          if [ "${PROPS_VERSION}" != "${VERSION}" ]; then
+            echo "::error::tag v${VERSION} does not match <Version> ${PROPS_VERSION} in Directory.Build.props at the tagged commit"; exit 1
+          fi
+          .github/scripts/assert-versions-unpublished.sh "${VERSION}"
+          {
+            echo "version=${VERSION}"
+            echo "tag=v${VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
+  draft-bootstrap:
+    needs: resolve
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_release-lifecycle.yaml
+    with:
+      action: bootstrap
+      tag: ${{ needs.resolve.outputs.tag }}
+
+  pack:
+    needs: [resolve, draft-bootstrap]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run the release script tests
+        run: |
+          set -euo pipefail
+          for test in .github/scripts/*.test.sh; do
+            bash "${test}"
+          done
+      - name: Restore
+        run: dotnet restore
+      - name: Build
+        env:
+          PACKAGE_VERSION: ${{ needs.resolve.outputs.version }}
+        run: dotnet build --configuration Release --no-restore -p:Version="$PACKAGE_VERSION" -p:ContinuousIntegrationBuild=true
+      - name: Test
+        run: dotnet test --configuration Release --no-build
+      - name: Pack
+        env:
+          PACKAGE_VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          dotnet pack --configuration Release --no-build \
+            -p:PackageVersion="$PACKAGE_VERSION" \
+            -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg \
+            -o "$GITHUB_WORKSPACE/output/nuget"
+      - name: Verify the packed set
+        env:
+          PACKAGE_VERSION: ${{ needs.resolve.outputs.version }}
+        run: .github/scripts/check-package-set.sh output/nuget "$PACKAGE_VERSION"
+      - name: Upload packages as artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nuget-packages
+          path: |
+            output/nuget/*.nupkg
+            output/nuget/*.snupkg
+          if-no-files-found: error
+          retention-days: 30
+      - name: Attach packages to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(output/nuget/*.nupkg output/nuget/*.snupkg)
+          gh release upload "$TAG" "${files[@]}" --clobber
+
+  nuget-publish:
+    needs: [resolve, pack]
+    runs-on: ubuntu-latest
+    environment: nuget-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout the release tag
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+      - name: Download packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: nuget-packages
+          path: output/nuget
+      - name: Confirm no shipped package has this version on nuget.org
+        env:
+          PACKAGE_VERSION: ${{ needs.resolve.outputs.version }}
+        run: .github/scripts/assert-versions-unpublished.sh "$PACKAGE_VERSION"
+      - name: NuGet login (OIDC -> short-lived key)
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Push packages to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+          PACKAGE_VERSION: ${{ needs.resolve.outputs.version }}
+        run: .github/scripts/push-packages.sh output/nuget "$PACKAGE_VERSION"
+
+  publish-release:
+    needs: [resolve, nuget-publish]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_release-lifecycle.yaml
+    with:
+      action: finalize
+      tag: ${{ needs.resolve.outputs.tag }}
+
+  complete:
+    needs: [resolve, draft-bootstrap, pack, nuget-publish, publish-release]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Summarise release
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          {
+            echo "## Release ${TAG}"
+            echo ""
+            echo "- draft-bootstrap: ${{ needs.draft-bootstrap.result }}"
+            echo "- pack: ${{ needs.pack.result }}"
+            echo "- nuget-publish: ${{ needs.nuget-publish.result }}"
+            echo "- publish-release: ${{ needs.publish-release.result }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail unless every stage succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          set -euo pipefail
+          for result in ${RESULTS}; do
+            [ "${result}" = "success" ] || { echo "::error::a release stage ended '${result}'"; exit 1; }
+          done
