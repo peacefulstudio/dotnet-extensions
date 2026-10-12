@@ -16,7 +16,6 @@ you're a maintainer), clone the upstream repo:
 ```bash
 git clone https://github.com/peacefulstudio/dotnet-extensions.git
 cd dotnet-extensions
-git checkout dev
 dotnet restore && dotnet build
 dotnet test
 ```
@@ -43,14 +42,13 @@ git config core.hooksPath .githooks
 
 ## Branching model
 
-| Branch  | Purpose                          |
-|---------|----------------------------------|
-| `dev`   | Default branch — open PRs here   |
-| `stage` | Staging / pre-production         |
-| `prod`  | Production — release tags only   |
+`main` is the only long-lived branch. Open every PR against `main`: it needs
+one approval and a passing `build-and-test` check, and is squash-merged.
 
-All PRs target `dev`. Promotion to `stage` and `prod` is handled by the
-maintainers.
+Contributors never tag or bump `<Version>`. A maintainer cuts each release; once
+the release PR is merged to `main`, CI tags `v<Version>` on the green commit,
+publishes the four `Peaceful.Extensions.*` packages to nuget.org and publishes
+the GitHub release with the `CHANGELOG.md` section as its notes.
 
 ## Test-driven development
 
@@ -99,17 +97,17 @@ External contributors usually don't have write access to
    cd dotnet-extensions
    git remote add upstream https://github.com/peacefulstudio/dotnet-extensions.git
    ```
-3. Create a feature branch from `dev`:
+3. Create a feature branch from `main`:
    ```bash
    git fetch upstream
-   git checkout -b feat/<short-description> upstream/dev
+   git checkout -b feat/<short-description> upstream/main
    ```
 4. Commit using the [Conventional Commits](https://www.conventionalcommits.org/)
    format (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`).
-5. Push the branch to your fork and open a PR targeting `peacefulstudio/dotnet-extensions`'s `dev`:
+5. Push the branch to your fork and open a PR targeting `peacefulstudio/dotnet-extensions`'s `main`:
    ```bash
    git push -u origin feat/<short-description>
-   gh pr create --repo peacefulstudio/dotnet-extensions --base dev
+   gh pr create --repo peacefulstudio/dotnet-extensions --base main
    ```
 6. Fill out the PR template — explicitly call out anything that affects
    public behaviour, schema, or state migration.
