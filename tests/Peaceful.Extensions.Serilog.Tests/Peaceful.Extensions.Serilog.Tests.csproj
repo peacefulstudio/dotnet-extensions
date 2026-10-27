@@ -8,5 +8,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Peaceful.Extensions.Serilog/Peaceful.Extensions.Serilog.csproj" />
+    <ProjectReference Include="../../src/Peaceful.Extensions.Telemetry/Peaceful.Extensions.Telemetry.csproj" />
   </ItemGroup>
 </Project>

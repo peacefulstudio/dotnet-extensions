@@ -76,11 +76,13 @@ public sealed class OpenTelemetryOptions
     /// <summary>
     /// OTLP collector endpoint URI (e.g. <c>http://otel-collector:4317</c>).
     /// When set—or when resolved from the <see cref="EndpointConfigKey"/>
-    /// configuration key—an OTLP exporter is added for traces and metrics by
-    /// <c>AddTelemetry</c>, and the same key drives the OTLP logs sink wired by
-    /// <c>AddDefaultSerilog</c>; otherwise no exporter or sink is registered and
-    /// a startup warning is logged. Must be an absolute URI with an <c>http</c>
-    /// or <c>https</c> scheme or the wiring throws.
+    /// configuration key—it drives traces, metrics and logs: an OTLP exporter is
+    /// added for traces and metrics by <c>AddTelemetry</c>, and the OTLP logs
+    /// sink wired by <c>AddDefaultSerilog</c> exports to the same endpoint;
+    /// otherwise no exporter or sink is registered and a startup warning is
+    /// logged. A value set in code takes precedence over the configuration key
+    /// for all three signals. Must be an absolute URI with an <c>http</c> or
+    /// <c>https</c> scheme or the wiring throws.
     /// </summary>
     public string? Endpoint { get; set; }
 

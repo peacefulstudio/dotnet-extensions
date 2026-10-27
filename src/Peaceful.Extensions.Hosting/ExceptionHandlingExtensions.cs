@@ -19,9 +19,7 @@ namespace Peaceful.Extensions.Hosting;
 /// </summary>
 public static partial class ExceptionHandlingExtensions
 {
-    // Isolated from ConfigureHttpJsonOptions so that consumer naming policies
-    // (e.g. snake_case) cannot rename the documented problem-details fields.
-    private static readonly JsonSerializerOptions _problemJsonOptions = new();
+    private static readonly JsonSerializerOptions _httpJsonOptionsIndependentProblemJsonOptions = new();
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception on {Method} {Path}")]
     private static partial void LogUnhandledException(ILogger logger, Exception? exception, string method, string? path);
@@ -64,7 +62,7 @@ public static partial class ExceptionHandlingExtensions
                             traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier,
                             instance = context.Request.Path.Value
                         },
-                        options: _problemJsonOptions,
+                        options: _httpJsonOptionsIndependentProblemJsonOptions,
                         contentType: "application/problem+json",
                         cancellationToken: context.RequestAborted);
                 });

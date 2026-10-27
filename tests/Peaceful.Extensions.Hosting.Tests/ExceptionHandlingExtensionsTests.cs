@@ -45,6 +45,22 @@ public class ExceptionHandlingExtensionsTests
     }
 
     [Fact]
+    public async Task exception_handler_response_body_omits_exception_details_in_production()
+    {
+        await using var app = await CreateAppAsync("Production");
+        var client = app.GetTestClient();
+
+        var response = await client.GetAsync("/throw", TestContext.Current.CancellationToken);
+        var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(json);
+        var propertyNames = doc.RootElement.EnumerateObject().Select(property => property.Name);
+
+        json.Should().NotContain("Test exception");
+        json.Should().NotContain("InvalidOperationException");
+        propertyNames.Should().BeEquivalentTo(["status", "title", "type", "traceId", "instance"]);
+    }
+
+    [Fact]
     public async Task exception_handler_returns_html_in_development()
     {
         await using var app = await CreateAppAsync("Development");
