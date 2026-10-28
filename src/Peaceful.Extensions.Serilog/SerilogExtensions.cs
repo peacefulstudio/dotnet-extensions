@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Peaceful.Extensions.Core;
 using Peaceful.Extensions.Telemetry;
 using Serilog;
@@ -82,9 +83,14 @@ public static partial class SerilogExtensions
     /// Wires Serilog into the host with JSON-by-default console output (in
     /// addition to any sinks declared in <c>Serilog:</c> configuration),
     /// <see cref="TraceContextEnricher"/> for trace/span correlation, and —
-    /// when <see cref="OpenTelemetryEndpointConfigKey"/> is configured — an
-    /// OTLP gRPC logs sink pointing at the same endpoint used for traces and
-    /// metrics.
+    /// when an endpoint is resolved — an OTLP gRPC logs sink pointing at the
+    /// same endpoint used for traces and metrics. The endpoint is
+    /// <see cref="OpenTelemetryOptions.Endpoint"/> from the
+    /// <c>IOptions&lt;OpenTelemetryOptions&gt;</c> registered by
+    /// <c>AddTelemetry</c> when set, otherwise the
+    /// <see cref="OpenTelemetryEndpointConfigKey"/> configuration key —
+    /// the same precedence as <c>AddTelemetry</c>, whatever the order the two
+    /// are registered in.
     /// </summary>
     /// <remarks>
     /// A blank or unset endpoint skips OTLP wiring rather than defaulting to
@@ -126,7 +132,9 @@ public static partial class SerilogExtensions
                 .Enrich.With<TraceContextEnricher>()
                 .WriteTo.Console(new RenderedCompactJsonFormatter());
 
-            var otlpEndpoint = context.Configuration[OpenTelemetryEndpointConfigKey];
+            var otlpEndpoint = ResolveOtlpEndpoint(
+                services.GetRequiredService<IOptions<OpenTelemetryOptions>>(),
+                context.Configuration);
             if (string.IsNullOrWhiteSpace(otlpEndpoint))
                 return;
 
@@ -162,6 +170,11 @@ public static partial class SerilogExtensions
         return builder;
     }
 
+    private static string? ResolveOtlpEndpoint(
+        IOptions<OpenTelemetryOptions> options,
+        IConfiguration configuration) =>
+        options.Value.Endpoint ?? configuration[OpenTelemetryEndpointConfigKey];
+
     /// <summary>
     /// Hosted service that logs a startup warning when no OTLP endpoint is
     /// configured. Uses <see cref="ILogger{TCategoryName}"/> from DI rather
@@ -170,20 +183,22 @@ public static partial class SerilogExtensions
     /// <see cref="CreateBootstrapLogger"/>. Registration is unconditional:
     /// <see cref="AddDefaultSerilog"/> only ever sees the configuration
     /// snapshot as it stands at call time, while <c>UseSerilog</c> decides
-    /// whether to wire the OTLP sink from the configuration as it stands at
-    /// <c>Build()</c>, and sources can land between the two in either
-    /// direction. <see cref="StartAsync"/> re-reads <see cref="IConfiguration"/>
+    /// whether to wire the OTLP sink from the configuration and options as
+    /// they stand at <c>Build()</c>, and sources can land between the two in
+    /// either direction. <see cref="StartAsync"/> re-resolves the endpoint
+    /// from <see cref="IOptions{TOptions}"/> and <see cref="IConfiguration"/>
     /// and is therefore the single point where the warning is decided, in
     /// lock-step with the sink-wiring decision — neither a silent skip nor a
     /// false warning while OTLP is in fact wired is possible.
     /// </summary>
     internal sealed partial class MissingEndpointWarning(
         IConfiguration configuration,
+        IOptions<OpenTelemetryOptions> options,
         ILogger<MissingEndpointWarning> logger) : IHostedService
     {
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(configuration[OpenTelemetryEndpointConfigKey]))
+            if (string.IsNullOrWhiteSpace(ResolveOtlpEndpoint(options, configuration)))
                 LogMissingEndpoint(logger, OpenTelemetryEndpointConfigKey);
             return Task.CompletedTask;
         }
@@ -242,12 +257,7 @@ public static partial class SerilogExtensions
     {
         ArgumentNullException.ThrowIfNull(quietProbePathPrefixes);
 
-        // Snapshot the caller's list into an immutable array so (a) a mutable
-        // collection passed in can't be changed under us between requests and
-        // (b) null/whitespace entries don't trip up StartsWith during logging.
-        var prefixes = quietProbePathPrefixes
-            .Where(p => !string.IsNullOrWhiteSpace(p))
-            .ToArray();
+        var prefixes = SnapshotNonBlankPrefixes(quietProbePathPrefixes);
 
         app.UseSerilogRequestLogging(options =>
         {
@@ -261,16 +271,22 @@ public static partial class SerilogExtensions
             {
                 if (IsQuietProbe(httpContext, prefixes, ex))
                     return LogEventLevel.Verbose;
-                // Mirror Serilog.AspNetCore's default mapping for everything
-                // else so non-probe traffic is unaffected.
-                return ex is not null || httpContext.Response.StatusCode >= 500
-                    ? LogEventLevel.Error
-                    : LogEventLevel.Information;
+                return SerilogAspNetCoreDefaultLevel(httpContext, ex);
             };
         });
 
         return app;
     }
+
+    private static string[] SnapshotNonBlankPrefixes(IReadOnlyList<string> prefixes) =>
+        prefixes
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .ToArray();
+
+    private static LogEventLevel SerilogAspNetCoreDefaultLevel(HttpContext httpContext, Exception? ex) =>
+        ex is not null || httpContext.Response.StatusCode >= 500
+            ? LogEventLevel.Error
+            : LogEventLevel.Information;
 
     private static bool IsQuietProbe(HttpContext httpContext, string[] prefixes, Exception? ex)
     {

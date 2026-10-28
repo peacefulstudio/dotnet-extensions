@@ -20,7 +20,7 @@ using Serilog.Events;
 // package namespace changes.
 namespace Peaceful.Extensions.Serilog.Tests;
 
-public class SerilogExtensionsTests
+public partial class SerilogExtensionsTests
 {
     [Fact]
     public async Task add_default_serilog_configures_serilog_on_host()
@@ -616,6 +616,51 @@ public class SerilogExtensionsTests
         var act = () => app.UseRequestLogging(null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("quietProbePathPrefixes");
+    }
+
+    [Fact]
+    public async Task AddDefaultSerilog_enriches_events_with_environment_machine_thread_and_trace_properties()
+    {
+        var previousLogger = Log.Logger;
+        var events = new System.Collections.Concurrent.ConcurrentQueue<LogEvent>();
+        using var activitySource = new System.Diagnostics.ActivitySource("Peaceful.Extensions.Serilog.Tests.Enrichment");
+        using var activityListener = new System.Diagnostics.ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Peaceful.Extensions.Serilog.Tests.Enrichment",
+            Sample = (ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext> _) =>
+                System.Diagnostics.ActivitySamplingResult.AllDataAndRecorded,
+        };
+        System.Diagnostics.ActivitySource.AddActivityListener(activityListener);
+        try
+        {
+            var builder = WebApplication.CreateBuilder();
+            builder.Services.AddSingleton<global::Serilog.Core.ILogEventSink>(new CollectingSink(events));
+            builder.AddDefaultSerilog();
+
+            await using var app = builder.Build();
+            var logger = app.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SerilogExtensionsTests>>();
+
+            using var activity = activitySource.StartActivity("enrichment-probe");
+            activity.Should().NotBeNull("the listener promotes the activity to recording so the trace enricher has a span to read");
+            logger.Log(Microsoft.Extensions.Logging.LogLevel.Information, default, "enrichment probe", null, (message, _) => message);
+
+            var evt = events.Should().ContainSingle(e => e.RenderMessage(System.Globalization.CultureInfo.InvariantCulture) == "enrichment probe").Subject;
+            evt.Properties["EnvironmentName"].Should().BeOfType<ScalarValue>()
+                .Which.Value.Should().BeOfType<string>()
+                .Which.Should().NotBeNullOrWhiteSpace();
+            evt.Properties["MachineName"].Should().BeOfType<ScalarValue>()
+                .Which.Value.Should().Be(Environment.MachineName);
+            evt.Properties["ThreadId"].Should().BeOfType<ScalarValue>()
+                .Which.Value.Should().BeOfType<int>();
+            evt.Properties["TraceId"].Should().BeOfType<ScalarValue>()
+                .Which.Value.Should().Be(activity!.TraceId.ToString());
+            evt.Properties["SpanId"].Should().BeOfType<ScalarValue>()
+                .Which.Value.Should().Be(activity.SpanId.ToString());
+        }
+        finally
+        {
+            Log.Logger = previousLogger;
+        }
     }
 
     private sealed class CollectingSink : global::Serilog.Core.ILogEventSink

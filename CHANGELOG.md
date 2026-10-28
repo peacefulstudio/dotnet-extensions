@@ -20,6 +20,32 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ### Security
 
+## [0.4.0] - 2026-10-27
+
+### Added
+- `MapDefaultHealthChecks` and `MapScalar` take an `allowAnonymous` parameter (default `true`). Pass `false` to drop the anonymous marker so the host's `FallbackPolicy` or a `RequireAuthorization()` chained on the returned group applies; the anonymous marker otherwise wins over a chained requirement. `/health/live` stays anonymous either way, so liveness probes keep working.
+
+### Changed
+- **Breaking:** `MapDefaultHealthChecks` now writes the plain-text status (`Healthy`, `Degraded` or `Unhealthy`) on `/health` and `/health/ready` instead of the HealthChecks UI JSON, so a failing check's exception message and data are no longer served to anonymous callers.
+  Migration: call `MapDefaultHealthChecks(detailed: true)` to keep the JSON body.
+- **Breaking:** `MapDefaultHealthChecks` and `MapScalar` return the `RouteGroupBuilder` holding their endpoints instead of the `WebApplication`, so `RequireHost(...)` and `RequireAuthorization(...)` can be chained onto them.
+  Migration: split chained calls, for example `app.MapScalar("API").MapDefaultHealthChecks()` becomes `app.MapScalar("API"); app.MapDefaultHealthChecks();`.
+- `Peaceful.Extensions.Telemetry` depends on the OpenTelemetry 1.20.1 line
+  throughout: `OpenTelemetry.Extensions.Hosting`,
+  `OpenTelemetry.Exporter.OpenTelemetryProtocol`,
+  `OpenTelemetry.Instrumentation.AspNetCore` and
+  `OpenTelemetry.Instrumentation.Http` 1.20.1, and
+  `OpenTelemetry.Instrumentation.GrpcNetClient` 1.20.1-beta.1 (was
+  1.19.1-beta.1).
+
+### Fixed
+- `AddDefaultSerilog` now exports logs to an OTLP endpoint set in code via
+  `AddTelemetry` (`OpenTelemetryOptions.Endpoint`), not only to the
+  `OpenTelemetry:Endpoint` configuration key, and no longer warns about a
+  missing logs endpoint when only the code value is set. The code value wins
+  over the configuration key for logs, as it already did for traces and
+  metrics, whichever order the two are registered in.
+
 ## [0.3.2] - 2026-09-22
 
 ### Changed
@@ -48,10 +74,10 @@ Pre-1.0 minor bumps may include breaking changes.
   with no package dependencies of its own — `HealthEndpoints` (the `/health`,
   `/health/ready` and `/health/live` probe paths), `HealthCheckTags.Ready`
   (the tag that selects a check into the readiness probe), and
-  `OpenTelemetryOptions`. (#170)
+  `OpenTelemetryOptions`.
 - `OpenTelemetryOptions.EndpointConfigKey` composes the `OpenTelemetry:Endpoint`
   configuration key from the section name and the property name, so every
-  package resolving that key reads it from one place. (#170)
+  package resolving that key reads it from one place.
 
 ### Changed
 - **Breaking:** `Peaceful.Extensions.Serilog` no longer depends on
@@ -60,10 +86,10 @@ Pre-1.0 minor bumps may include breaking changes.
   It depends on `Peaceful.Extensions.Core` instead. Consumers that referenced
   only `Peaceful.Extensions.Serilog` and called `builder.AddTelemetry(...)`
   through the transitive reference now fail to compile with CS0246 / CS1061;
-  add an explicit `Peaceful.Extensions.Telemetry` `PackageReference`. (#170)
+  add an explicit `Peaceful.Extensions.Telemetry` `PackageReference`.
 - `Peaceful.Extensions.Hosting` and `Peaceful.Extensions.Telemetry` now take a
   `Peaceful.Extensions.Core` package dependency, so every consumer of those two
-  picks up one new transitive package on upgrade. (#170)
+  picks up one new transitive package on upgrade.
 - **Breaking:** `OpenTelemetryOptions` now ships in `Peaceful.Extensions.Core`
   while keeping its `Peaceful.Extensions.Telemetry` namespace;
   `Peaceful.Extensions.Telemetry` type-forwards it, so already-compiled
@@ -74,12 +100,12 @@ Pre-1.0 minor bumps may include breaking changes.
   old Telemetry fails with `CS0433: The type 'OpenTelemetryOptions' exists in
   both 'Peaceful.Extensions.Core' and 'Peaceful.Extensions.Telemetry'`. NuGet
   cannot express the constraint, so upgrade all `Peaceful.Extensions.*`
-  packages together at this version. (#170)
+  packages together at this version.
 - `OpenTelemetryOptions.TraceSamplingRatio` no longer throws from its property
   setter. An out-of-range value is rejected when `AddTelemetry` runs rather
   than at assignment, so code that relied on catching
   `ArgumentOutOfRangeException` around the assignment now sees the failure
-  later, at host build. (#170)
+  later, at host build.
 
 ### Deprecated
 
@@ -92,13 +118,13 @@ Pre-1.0 minor bumps may include breaking changes.
   `AddDefaultSerilog` call time and withdrawn whenever an endpoint was present
   then, so a source added afterwards that blanked it left neither an OTLP logs
   sink nor a warning. The warning is now registered unconditionally and decides
-  at startup. (#170)
+  at startup.
 - `Peaceful.Extensions.Serilog` and `Peaceful.Extensions.Telemetry` now reject
   an OTLP endpoint whose scheme is neither `http` nor `https`. Both validated
   with `Uri.TryCreate(..., UriKind.Absolute)`, which accepts
   `otel-collector:4317` as a valid absolute URI with scheme `otel-collector` —
   a dropped `http://`, the most common misconfiguration, passed validation and
-  reached the exporter, failing later and out of band. (#170)
+  reached the exporter, failing later and out of band.
 - `OpenTelemetryOptions.TraceSamplingRatio` now reports an out-of-range value
   against the configuration key that set it. The range was enforced in a
   throwing property setter, so on the configuration-binding path its own docs
@@ -112,7 +138,7 @@ Pre-1.0 minor bumps may include breaking changes.
   both the property and the `OpenTelemetry:TraceSamplingRatio` configuration
   key. The property carries `[Range(0.0, 1.0)]`, so consumers who opt into
   `.ValidateDataAnnotations()` on their own options registration get validation
-  there too. (#170)
+  there too.
 
 ### Security
 
@@ -153,55 +179,55 @@ Pre-1.0 minor bumps may include breaking changes.
 Dependency-bump release. No source changes.
 
 ### Dependencies
-- `Scalar.AspNetCore` 2.16.9 → 2.16.13 (#105, #107, #115)
-- `Microsoft.AspNetCore.OpenApi` 10.0.9 → 10.0.10 (#112)
+- `Scalar.AspNetCore` 2.16.9 → 2.16.13
+- `Microsoft.AspNetCore.OpenApi` 10.0.9 → 10.0.10
 - `Microsoft.OpenApi` 2.7.5 → 2.11.0, advancing the GHSA-v5pm-xwqc-g5wc
-  security pin within 2.x (#109, #118)
-- `Microsoft.SourceLink.GitHub` 10.0.300 → 10.0.301 (#114)
+  security pin within 2.x
+- `Microsoft.SourceLink.GitHub` 10.0.300 → 10.0.301
 
 ## [0.2.1-preview.3] - 2026-07-04
 
 ### Changed
-- `Scalar.AspNetCore` 2.16.3 → 2.16.9. (#86, #88, #92, #96, #98)
-- `OpenTelemetry.Instrumentation.AspNetCore` 1.15.2 → 1.16.0. (#89)
-- `OpenTelemetry.Instrumentation.Http` 1.15.1 → 1.16.0. (#90)
+- `Scalar.AspNetCore` 2.16.3 → 2.16.9.
+- `OpenTelemetry.Instrumentation.AspNetCore` 1.15.2 → 1.16.0.
+- `OpenTelemetry.Instrumentation.Http` 1.15.1 → 1.16.0.
 - `OpenTelemetry.Instrumentation.GrpcNetClient` 1.15.1-beta.1 → 1.16.0-beta.1,
-  aligning it with the OpenTelemetry 1.16 instrumentation train. (#101)
+  aligning it with the OpenTelemetry 1.16 instrumentation train.
 
 ### Security
 - Pin `Microsoft.OpenApi` to 2.7.5 to override the vulnerable transitive 2.0.0
   dragged in by `Microsoft.AspNetCore.OpenApi`, clearing NU1903
-  (GHSA-v5pm-xwqc-g5wc) and unblocking source-wired downstream builds. (#99)
+  (GHSA-v5pm-xwqc-g5wc) and unblocking source-wired downstream builds.
 
 ## [0.2.1-preview.2] - 2026-06-12
 
 Dependency-bump release. No source changes.
 
 ### Dependencies
-- `Scalar.AspNetCore` 2.14.14 → 2.16.2 (#82)
-- `Scalar.AspNetCore` 2.16.2 → 2.16.3 (#85)
-- `Microsoft.AspNetCore.OpenApi` 10.0.8 → 10.0.9 (#80)
-- `OpenTelemetry.Extensions.Hosting` 1.15.3 → 1.16.0 (#84)
-- `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.3 → 1.16.0 (#83)
+- `Scalar.AspNetCore` 2.14.14 → 2.16.2
+- `Scalar.AspNetCore` 2.16.2 → 2.16.3
+- `Microsoft.AspNetCore.OpenApi` 10.0.8 → 10.0.9
+- `OpenTelemetry.Extensions.Hosting` 1.15.3 → 1.16.0
+- `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.3 → 1.16.0
 
 ## [0.2.1-preview.1] - 2026-06-06
 
 ### Added
 - `LICENSE` (Apache-2.0) and `NOTICE` files at repo root — aligns the repository
   with the `<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>` already
-  declared in `Directory.Build.props`. (#72)
+  declared in `Directory.Build.props`.
 - Ship XML documentation in all three packages, so consumers get IntelliSense
-  docs for the public API. (#78)
+  docs for the public API.
 - Publish NuGet symbol packages (`.snupkg`) with Source Link and deterministic
-  builds, so consumers can step into the library sources while debugging. (#78)
+  builds, so consumers can step into the library sources while debugging.
 - Add a package icon, README, and search tags to each published package for a
-  richer nuget.org listing. (#78)
+  richer nuget.org listing.
 
 ### Changed
 - SPDX Apache-2.0 headers added to all 22 `.cs` source files; legacy
-  "All rights reserved" notices replaced. (#72)
+  "All rights reserved" notices replaced.
 - `<Copyright>` tag in `Directory.Build.props` normalized to drop "All rights
-  reserved" — incompatible with an Apache-2.0 license expression. (#72)
+  reserved" — incompatible with an Apache-2.0 license expression.
 - `PackageProjectUrl`/`RepositoryUrl` in `Directory.Build.props` now point at the
   canonical `peacefulstudio/dotnet-extensions` repository, so published package
   metadata advertises the project's public home.
@@ -273,9 +299,9 @@ Dependency-bump release. No source changes.
   prevents the silent-fallback regression from coming back.
 
 ### Dependencies
-- `Scalar.AspNetCore` 2.14.4 → 2.14.9 (#40, #41, #43, #44)
-- `Microsoft.NET.Test.Sdk` 18.5.0 → 18.5.1 (#42)
-- `dependabot/fetch-metadata` (github-actions) bumped (#39)
+- `Scalar.AspNetCore` 2.14.4 → 2.14.9
+- `Microsoft.NET.Test.Sdk` 18.5.0 → 18.5.1
+- `dependabot/fetch-metadata` (github-actions) bumped
 
 ## [0.1.2] - 2026-04-24
 
@@ -295,11 +321,11 @@ Dependency-bump release. No source changes.
 Dependency-bump release. No source changes.
 
 ### Changed
-- `Asp.Versioning.Http` 8.1.1 → 10.0.0 (#22)
-- `Asp.Versioning.Mvc.ApiExplorer` 8.1.1 → 10.0.0 (#23)
-- `Microsoft.AspNetCore.Mvc.Testing` 10.0.6 → 10.0.7 (#24)
-- `Microsoft.AspNetCore.OpenApi` 10.0.6 → 10.0.7 (#25)
-- `Microsoft.NET.Test.Sdk` 18.4.0 → 18.5.0 (#26)
+- `Asp.Versioning.Http` 8.1.1 → 10.0.0
+- `Asp.Versioning.Mvc.ApiExplorer` 8.1.1 → 10.0.0
+- `Microsoft.AspNetCore.Mvc.Testing` 10.0.6 → 10.0.7
+- `Microsoft.AspNetCore.OpenApi` 10.0.6 → 10.0.7
+- `Microsoft.NET.Test.Sdk` 18.4.0 → 18.5.0
 
 ## [0.1.0] - 2026-04-23
 
@@ -367,7 +393,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.1-preview.1...v0.3.2
 [0.3.1-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.0-preview.1...v0.3.1-preview.1
 [0.3.0-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.2.2-preview.1...v0.3.0-preview.1

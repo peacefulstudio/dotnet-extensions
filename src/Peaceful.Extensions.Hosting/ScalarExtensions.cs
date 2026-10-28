@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
@@ -53,22 +54,47 @@ public static class ScalarExtensions
     }
 
     /// <summary>
-    /// Maps the anonymous OpenAPI document endpoint at
-    /// <c>/openapi/{documentName}.yaml</c> and an anonymous Scalar API reference
-    /// UI that reads from it, titled with <paramref name="title"/>.
+    /// Maps the OpenAPI document endpoint at <c>/openapi/{documentName}.yaml</c>
+    /// and a Scalar API reference UI that reads from it, titled with
+    /// <paramref name="title"/>.
+    /// <para>
+    /// The endpoints are anonymous by default. The anonymous marker takes
+    /// precedence over an authorization requirement chained on the returned
+    /// group, so <c>RequireAuthorization()</c> has no effect unless
+    /// <paramref name="allowAnonymous"/> is <see langword="false"/>. Other
+    /// restrictions such as <c>RequireHost(...)</c> work with either setting.
+    /// </para>
     /// </summary>
     /// <param name="app">The application whose endpoints are being configured.</param>
     /// <param name="title">The title shown in the Scalar API reference UI.</param>
-    /// <returns>The same <paramref name="app"/> instance, to allow chaining.</returns>
-    public static WebApplication MapScalar(this WebApplication app, string title)
+    /// <param name="allowAnonymous">
+    /// <see langword="true"/> (the default) to mark the endpoints anonymous;
+    /// <see langword="false"/> to leave authorization to the host's
+    /// <c>FallbackPolicy</c> and to requirements chained on the returned group.
+    /// </param>
+    /// <returns>
+    /// The route group holding the OpenAPI and Scalar endpoints, so the caller can
+    /// chain <c>RequireHost(...)</c>, <c>RequireAuthorization(...)</c> and similar
+    /// conventions onto both.
+    /// </returns>
+    public static RouteGroupBuilder MapScalar(
+        this WebApplication app,
+        string title,
+        bool allowAnonymous = true)
     {
-        app.MapOpenApi("/openapi/{documentName}.yaml").AllowAnonymous();
-        app.MapScalarApiReference(options =>
+        var group = app.MapGroup(string.Empty);
+        group.MapOpenApi("/openapi/{documentName}.yaml");
+        group.MapScalarApiReference(options =>
         {
             options.WithTitle(title)
                    .WithOpenApiRoutePattern("/openapi/{documentName}.yaml");
-        }).AllowAnonymous();
+        });
 
-        return app;
+        if (allowAnonymous)
+        {
+            group.AllowAnonymous();
+        }
+
+        return group;
     }
 }

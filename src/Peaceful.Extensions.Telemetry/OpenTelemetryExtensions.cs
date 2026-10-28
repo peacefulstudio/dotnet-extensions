@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -45,7 +46,11 @@ public static partial class OpenTelemetryExtensions
     /// endpoint is resolved from <see cref="OpenTelemetryOptions.Endpoint"/> or
     /// the <see cref="OpenTelemetryEndpointConfigKey"/> configuration key—an
     /// OTLP exporter for both signals. When no endpoint is resolved a hosted
-    /// service is registered to log a startup warning.
+    /// service is registered to log a startup warning. The populated
+    /// <see cref="OpenTelemetryOptions"/> is also registered in DI as
+    /// <c>IOptions&lt;OpenTelemetryOptions&gt;</c>, so other packages (such as
+    /// the OTLP logs sink in <c>Peaceful.Extensions.Serilog</c>) honour an
+    /// endpoint set in code, whatever the registration order.
     /// </summary>
     /// <param name="builder">The web application builder to configure.</param>
     /// <param name="configure">
@@ -88,6 +93,8 @@ public static partial class OpenTelemetryExtensions
                 $"Set it via the options action or the '{TraceSamplingRatioConfigKey}' configuration key.");
         }
 
+        builder.Services.AddSingleton(Options.Create(options));
+
         var otlpEndpoint = options.Endpoint
             ?? builder.Configuration[OpenTelemetryEndpointConfigKey];
 
@@ -109,15 +116,7 @@ public static partial class OpenTelemetryExtensions
             }
         }
 
-        // Head sampler: ParentBased so a server that receives a sampled
-        // incoming trace keeps recording it, while locally-started root
-        // spans honour the configured ratio. Ratio=1.0 keeps every fresh,
-        // parentless root span; 0.0 drops every fresh, parentless root span.
-        // Either way, child spans inherit the parent decision (ParentBased)
-        // and instrumentation filters (e.g. the /health filter below) still
-        // apply first.
-        var sampler = new ParentBasedSampler(
-            new TraceIdRatioBasedSampler(samplingRatio));
+        var sampler = CreateParentBasedRatioSampler(samplingRatio);
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
@@ -167,6 +166,9 @@ public static partial class OpenTelemetryExtensions
 
         return builder;
     }
+
+    private static ParentBasedSampler CreateParentBasedRatioSampler(double rootSpanSamplingRatio) =>
+        new(new TraceIdRatioBasedSampler(rootSpanSamplingRatio));
 
     private static void RemoveMissingEndpointWarning(IServiceCollection services)
     {
