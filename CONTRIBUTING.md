@@ -48,7 +48,11 @@ one approval and a passing `build-and-test` check, and is squash-merged.
 Contributors never tag or bump `<Version>`. A maintainer cuts each release; once
 the release PR is merged to `main`, CI tags `v<Version>` on the green commit,
 publishes the four `Peaceful.Extensions.*` packages to nuget.org and publishes
-the GitHub release with the `CHANGELOG.md` section as its notes.
+the GitHub release with `release-notes/v<Version>.md` as its body. The release
+PR commits that file next to the `CHANGELOG.md` promotion and the version bump,
+and the gates refuse to tag without it. The file is curated prose: a
+one-sentence summary, what is new, upgrade steps when there are breaking
+changes, the fixes a reader would notice, and a link to the full changelog.
 
 ## Test-driven development
 

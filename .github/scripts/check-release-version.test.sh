@@ -23,6 +23,8 @@ make_root() {
   mkdir -p "$root"
   printf '<Project><PropertyGroup><Version>%s</Version></PropertyGroup></Project>\n' "$2" >"$root/Directory.Build.props"
   printf '# Changelog\n\n## [Unreleased]\n\n### Added\n\n## [%s] - 2026-01-01\n\n### Added\n- thing\n\n[Unreleased]: https://example.invalid\n' "$3" >"$root/CHANGELOG.md"
+  mkdir -p "$root/release-notes"
+  printf '# Release v%s\n\nCurated prose.\n' "$2" >"$root/release-notes/v$2.md"
 }
 
 check() {
@@ -56,6 +58,22 @@ check "an empty CHANGELOG section for the version fails" 1 "no non-empty section
 make_root no-release-heading 1.2.3 1.2.3
 printf '# Changelog\n\n## [Unreleased]\n' >"$root/CHANGELOG.md"
 check "a CHANGELOG without a release heading fails" 1 "tops out at []"
+
+make_root missing-notes 1.2.3 1.2.3
+rm "$root/release-notes/v1.2.3.md"
+check "a missing release-notes file for the version fails naming the file" 1 "release-notes/v1.2.3.md is missing or empty"
+
+make_root empty-notes 1.2.3 1.2.3
+: >"$root/release-notes/v1.2.3.md"
+check "an empty release-notes file for the version fails naming the file" 1 "release-notes/v1.2.3.md is missing or empty"
+
+make_root prerelease-missing-notes 1.2.3-preview.1 1.2.3-preview.1
+rm "$root/release-notes/v1.2.3-preview.1.md"
+check "a prerelease without its release-notes file fails naming the file" 1 "release-notes/v1.2.3-preview.1.md is missing or empty"
+
+make_root notes-for-another-version 1.2.3 1.2.3
+mv "$root/release-notes/v1.2.3.md" "$root/release-notes/v1.2.2.md"
+check "release notes written for another version do not satisfy the gate" 1 "release-notes/v1.2.3.md is missing or empty"
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures assertion(s) failed" >&2
