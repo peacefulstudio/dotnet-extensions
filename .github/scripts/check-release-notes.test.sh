@@ -47,6 +47,10 @@ make_root empty-notes 1.2.3
 : >"$root/release-notes/v1.2.3.md"
 check "an empty release-notes file for the version fails naming the file" 1.2.3 1 "release-notes/v1.2.3.md is missing or empty"
 
+make_root whitespace-notes 1.2.3
+printf ' \n\t\n' >"$root/release-notes/v1.2.3.md"
+check "a whitespace-only release-notes file for the version fails naming the file" 1.2.3 1 "release-notes/v1.2.3.md is missing or empty"
+
 make_root prerelease-missing-notes 1.2.3-preview.1
 rm "$root/release-notes/v1.2.3-preview.1.md"
 check "a prerelease without its release-notes file fails naming the file" 1.2.3-preview.1 1 "release-notes/v1.2.3-preview.1.md is missing or empty"
