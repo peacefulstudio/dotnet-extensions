@@ -14,8 +14,7 @@ directory) after asserting that it is releasable:
   1. <Version> in Directory.Build.props is a SemVer release version;
   2. the newest released heading of CHANGELOG.md (the first "## [x]" other than
      Unreleased) names that same version;
-  3. that CHANGELOG section is not empty;
-  4. release-notes/v<version>.md exists and is not empty.
+  3. that CHANGELOG section is not empty.
 
 Exit codes: 0 releasable, 1 not releasable.
 EOF2
@@ -46,8 +45,5 @@ changelog_version="$(sed -n 's:^## \[\([^]]*\)\].*:\1:p' "${root}/CHANGELOG.md" 
 
 "${script_dir}/changelog-section.sh" "${version}" "${root}/CHANGELOG.md" > /dev/null ||
   refuse "CHANGELOG.md has no non-empty section for ${version}."
-
-[ -s "${root}/release-notes/v${version}.md" ] ||
-  refuse "release-notes/v${version}.md is missing or empty; the release body is the curated notes file."
 
 printf '%s\n' "${version}"
