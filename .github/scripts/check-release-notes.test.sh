@@ -6,7 +6,7 @@ set -uo pipefail
 
 case "${1:-}" in
   -h | --help)
-    echo "Usage: $0 — regression test for check-release-notes.sh; exits non-zero on any failed assertion."
+    echo "Usage: $0: regression test for check-release-notes.sh; exits non-zero on any failed assertion."
     exit 0
     ;;
 esac
