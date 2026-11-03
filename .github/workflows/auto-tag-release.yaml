@@ -75,6 +75,9 @@ jobs:
             ! release_done_or_running || skip "${tag} already exists and its release is published or running"
           fi
 
+          .github/scripts/check-release-notes.sh "${version}" \
+            || { echo "::error::${HEAD_SHA} has no curated release-notes/v${version}.md; refusing to tag"; exit 1; }
+
           held="$(gh pr list --state open --label hold-release --json number --jq 'length')"
           [ "${held}" = "0" ] || skip "${held} open pull request(s) carry hold-release"
 

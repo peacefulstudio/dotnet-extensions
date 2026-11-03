@@ -51,6 +51,7 @@ jobs:
           if [ "${PROPS_VERSION}" != "${VERSION}" ]; then
             echo "::error::tag v${VERSION} does not match <Version> ${PROPS_VERSION} in Directory.Build.props at the tagged commit"; exit 1
           fi
+          .github/scripts/check-release-notes.sh "${VERSION}"
           .github/scripts/assert-versions-unpublished.sh "${VERSION}"
           {
             echo "version=${VERSION}"

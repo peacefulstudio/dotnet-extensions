@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       action:
-        description: "'bootstrap' (ensure a draft prerelease exists) or 'finalize' (fill the notes from the CHANGELOG section and publish the draft)."
+        description: "'bootstrap' (ensure a draft prerelease exists) or 'finalize' (set the body to the curated release-notes file and publish the draft)."
         required: true
         type: string
       tag:
@@ -20,7 +20,7 @@ on:
         description: 'Draft notes used when bootstrap creates a new draft.'
         required: false
         type: string
-        default: 'Draft release assembled by CI. Packages are attached by the release pipeline and the notes are filled from the CHANGELOG when it publishes.'
+        default: 'Draft release assembled by CI. Packages are attached by the release pipeline and the body is set to the curated release-notes file when it publishes.'
     outputs:
       release_url:
         description: 'HTML URL of the affected release.'
@@ -80,8 +80,11 @@ jobs:
                 echo "::warning::release $TAG is already published; nothing to finalize"
               else
                 version="${TAG#v}"
-                notes_file="$RUNNER_TEMP/release-notes.md"
-                .github/scripts/changelog-section.sh "$version" > "$notes_file"
+                notes_file="release-notes/v${version}.md"
+                if [ ! -s "$notes_file" ]; then
+                  echo "::error::release-notes/v${version}.md is missing or empty at ${TAG}; the release body is the curated notes file"
+                  exit 1
+                fi
                 prerelease=false
                 [[ "$version" == *-* ]] && prerelease=true
                 gh release edit "$TAG" --notes-file "$notes_file" --prerelease="$prerelease" --draft=false
