@@ -29,7 +29,7 @@ dotnet add package Peaceful.Extensions.Telemetry
 
 ## Supported .NET versions
 
-The libraries target every .NET version Microsoft supports, from `net10.0` up. Today that is `net10.0` and `net11.0`: each package ships a `lib/net10.0` and a `lib/net11.0` asset, and NuGet picks the one matching your project. Microsoft packages follow the target: 10.0.x on `net10.0`, 11.0.x on `net11.0`. Consuming the packages from a `net10.0` project needs only the .NET 10 SDK.
+The libraries target every .NET version Microsoft supports, from `net10.0` up. Today that is `net10.0` and `net11.0`: each package ships a `lib/net10.0` and a `lib/net11.0` asset, and NuGet picks the one matching your project. `Microsoft.AspNetCore.OpenApi` follows the target (10.0.x on `net10.0`, 11.0.x on `net11.0`), and `Microsoft.OpenApi` is 2.x on `net10.0` and 3.x on `net11.0`. Consuming the packages from a `net10.0` project needs only the .NET 10 SDK.
 
 ## Build from source
 
