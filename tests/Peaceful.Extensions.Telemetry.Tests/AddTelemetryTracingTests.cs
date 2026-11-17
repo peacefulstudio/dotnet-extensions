@@ -51,6 +51,20 @@ public class AddTelemetryTracingTests
         exceptionEvent.Tags.Should().Contain(new KeyValuePair<string, object?>("exception.message", "boom"));
     }
 
+    [Fact]
+    public async Task AddTelemetry_records_each_http_server_tag_once_on_a_request_span()
+    {
+        await using var host = await StartTracedHostAsync();
+
+        await host.Client.GetAsync("/sentinel", TestContext.Current.CancellationToken);
+        await host.SpanEnded("/sentinel").WaitAsync(TestContext.Current.CancellationToken);
+
+        var span = host.ExportedSpans().Should().ContainSingle(s => s.PathTag == "/sentinel").Subject.Activity;
+        var tagKeys = span.TagObjects.Select(tag => tag.Key).ToList();
+        tagKeys.Should().OnlyHaveUniqueItems();
+        tagKeys.Should().Contain(["http.request.method", "http.response.status_code", "url.path"]);
+    }
+
     private static async Task<TracedHost> StartTracedHostAsync()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Production });
