@@ -56,7 +56,10 @@ public sealed class OpenTelemetryOptions
     /// Logical service name reported as the <c>service.name</c> resource
     /// attribute, and also used as the activity source and meter name for the
     /// application's own instrumentation. Defaults to <c>"unknown"</c>; must be
-    /// non-empty or <c>AddTelemetry</c> throws.
+    /// non-empty or <c>AddTelemetry</c> throws. Set it in code or under the
+    /// <c>OpenTelemetry:ServiceName</c> configuration key: the
+    /// <c>OTEL_SERVICE_NAME</c> environment variable is never read, because
+    /// <c>AddTelemetry</c> always sets <c>service.name</c> from this property.
     /// </summary>
     public string ServiceName { get; set; } = "unknown";
 

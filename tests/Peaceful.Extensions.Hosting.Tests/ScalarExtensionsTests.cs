@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi;
 
 namespace Peaceful.Extensions.Hosting.Tests;
 
@@ -21,6 +23,37 @@ public class ScalarExtensionsTests
         var response = await client.GetAsync("/scalar/v1", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+#if NET11_0_OR_GREATER
+    private const int ExpectedAspNetCoreOpenApiMajor = 11;
+    private const int ExpectedMicrosoftOpenApiMajor = 3;
+    private const string ExpectedOpenApiVersionLine = "openapi: '3.2.0'";
+#else
+    private const int ExpectedAspNetCoreOpenApiMajor = 10;
+    private const int ExpectedMicrosoftOpenApiMajor = 2;
+    private const string ExpectedOpenApiVersionLine = "openapi: '3.1.1'";
+#endif
+
+    [Fact]
+    public void openapi_packages_resolve_to_the_pair_matching_the_target_framework()
+    {
+        var aspNetCoreOpenApi = typeof(OpenApiServiceCollectionExtensions).Assembly.GetName().Version!;
+        var microsoftOpenApi = typeof(OpenApiInfo).Assembly.GetName().Version!;
+
+        aspNetCoreOpenApi.Major.Should().Be(ExpectedAspNetCoreOpenApiMajor);
+        microsoftOpenApi.Major.Should().Be(ExpectedMicrosoftOpenApiMajor);
+    }
+
+    [Fact]
+    public async Task openapi_document_declares_the_specification_version_of_the_target_framework()
+    {
+        await using var app = await CreateAppAsync();
+        var client = app.GetTestClient();
+
+        var yaml = await client.GetStringAsync("/openapi/v1.yaml", TestContext.Current.CancellationToken);
+
+        yaml.Should().StartWith(ExpectedOpenApiVersionLine);
     }
 
     [Fact]

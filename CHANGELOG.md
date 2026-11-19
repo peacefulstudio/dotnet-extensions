@@ -20,6 +20,19 @@ Pre-1.0 minor bumps may include breaking changes.
 
 ### Security
 
+## [0.5.0] - 2026-11-16
+
+### Added
+- All four packages ship `lib/net10.0` and `lib/net11.0` assets. Microsoft dependencies follow the target framework: `Microsoft.AspNetCore.OpenApi` 10.0.x with `Microsoft.OpenApi` 2.x on `net10.0`, and 11.0.x with `Microsoft.OpenApi` 3.11 on `net11.0`. README gains a "Supported .NET versions" section.
+
+### Changed
+- **Breaking:** on `net11.0` the served OpenAPI document is version 3.2.0 (ASP.NET Core 11's default) and the app resolves `Microsoft.OpenApi` 3.x, where a `net11.0` consumer of 0.4.0 got the `net10.0` asset: `Microsoft.OpenApi` 2.x and a 3.1.1 document. The document stays 3.1.x on `net10.0`. Scalar 2.20.0 rendered the 3.2.0 document in a headless-browser check on `net11.0`.
+  Migration: to keep a 3.1 document, set `OpenApiOptions.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1` for the document. `AddDefaultOpenApi` registers the document as `v1`, so add `builder.Services.Configure<OpenApiOptions>("v1", options => options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1);`. Code that uses `Microsoft.OpenApi` 2.x types directly must move to the 3.x API.
+- `AddTelemetry` binds the whole `OpenTelemetry` configuration section before running the options action, so `ServiceName`, `ServiceVersion`, `ServiceInstanceId`, `EnableGrpcInstrumentation` and `TraceSamplingRatio` set only in configuration now take effect; previously only `Endpoint` was read. A value set in the options action still wins. `OTEL_SERVICE_NAME` is not read.
+  Migration: a host carrying stale keys under `OpenTelemetry` changes behaviour on upgrade. Remove or correct them before upgrading. A value that does not convert to its property's type, such as `TraceSamplingRatio` set to `10%`, now makes `AddTelemetry` throw an `InvalidOperationException` at startup.
+- `Peaceful.Extensions.Telemetry` depends on the OpenTelemetry 1.21.0 line: `OpenTelemetry.Extensions.Hosting`, `OpenTelemetry.Exporter.OpenTelemetryProtocol`, `OpenTelemetry.Instrumentation.AspNetCore` and `OpenTelemetry.Instrumentation.Http` 1.21.0 (were 1.20.1). `OpenTelemetry.Instrumentation.GrpcNetClient` stays at 1.20.1-beta.1.
+- `Peaceful.Extensions.Hosting` depends on `Scalar.AspNetCore` 2.21.0 (was 2.18.3) and, on `net10.0`, `Microsoft.AspNetCore.OpenApi` 10.0.15 (was 10.0.14).
+
 ## [0.4.0] - 2026-10-27
 
 ### Added
@@ -393,7 +406,8 @@ need the following updates when moving to stable `0.1.0`:
   `OpenTelemetry:ServiceName`, etc.) are unchanged from the dev-branch
   conventions — no `appsettings.*.json` migration required.
 
-[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.1-preview.1...v0.3.2
 [0.3.1-preview.1]: https://github.com/peacefulstudio/dotnet-extensions/compare/v0.3.0-preview.1...v0.3.1-preview.1

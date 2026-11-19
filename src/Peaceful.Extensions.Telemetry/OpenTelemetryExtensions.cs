@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -39,7 +40,10 @@ public static partial class OpenTelemetryExtensions
     public const string MissingEndpointWarningEventName = "OpenTelemetryEndpointMissing";
 
     /// <summary>
-    /// Registers OpenTelemetry tracing and metrics on the builder. Configures
+    /// Registers OpenTelemetry tracing and metrics on the builder. Binds the
+    /// <see cref="OpenTelemetryOptions.SectionName"/> configuration section into
+    /// a fresh <see cref="OpenTelemetryOptions"/>, then applies
+    /// <paramref name="configure"/> on top of it. Configures
     /// resource attributes (service name, version and instance id), ASP.NET
     /// Core and HttpClient instrumentation, a head-based sampler derived from
     /// <see cref="OpenTelemetryOptions.TraceSamplingRatio"/>, and—when an OTLP
@@ -54,8 +58,10 @@ public static partial class OpenTelemetryExtensions
     /// </summary>
     /// <param name="builder">The web application builder to configure.</param>
     /// <param name="configure">
-    /// Callback used to populate the <see cref="OpenTelemetryOptions"/> instance
-    /// applied to the telemetry pipeline.
+    /// Callback applied to the <see cref="OpenTelemetryOptions"/> instance after
+    /// the <see cref="OpenTelemetryOptions.SectionName"/> configuration section
+    /// has been bound into it, so a value set here overrides the same key set in
+    /// configuration.
     /// </param>
     /// <returns>The same <paramref name="builder"/> instance, to allow chaining.</returns>
     /// <exception cref="ArgumentNullException">
@@ -79,6 +85,7 @@ public static partial class OpenTelemetryExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         var options = new OpenTelemetryOptions();
+        builder.Configuration.GetSection(OpenTelemetryOptions.SectionName).Bind(options);
         configure(options);
 
         ArgumentException.ThrowIfNullOrWhiteSpace(options.ServiceName);
